@@ -1,0 +1,2178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>VandenLoom — Production Tracker</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<style>
+:root{
+  --bg:#0f1117;--surface:#181c27;--surface2:#1f2437;--border:#2a2f45;
+  --accent:#c9a96e;--accent2:#8b6b3d;--text:#e8e2d5;--text-muted:#6b7280;--text-dim:#9ca3af;
+  --green:#22c55e;--yellow:#f59e0b;--red:#ef4444;--blue:#3b82f6;
+  --path-sample:#a855f7;--path-direct:#14b8a6;
+  --col-w:300px;--radius:10px;--radius-sm:6px;
+  --shadow:0 4px 24px rgba(0,0,0,.45);
+  --font:'Segoe UI',system-ui,sans-serif;--font-mono:'Courier New',monospace;
+  --topbar-h:56px;--filter-h:40px;--legend-h:38px;--header-total:134px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inherit}
+a{color:var(--accent);text-decoration:none}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:var(--surface)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* LOADING */
+#loading-screen{position:fixed;inset:0;z-index:9000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .5s}
+#loading-screen.hide{opacity:0;pointer-events:none}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-brand{font-size:1.3rem;font-weight:700;letter-spacing:.2em;color:var(--accent);text-transform:uppercase}
+.loading-sub{font-size:.75rem;color:var(--text-muted);letter-spacing:.15em;text-transform:uppercase}
+
+/* FB CONFIG */
+#fb-config-screen{position:fixed;inset:0;z-index:8000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto}
+.fb-config-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:32px;max-width:580px;width:100%}
+.fb-config-box h2{color:var(--accent);font-size:1rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.fb-config-box p{color:var(--text-muted);font-size:.82rem;line-height:1.7;margin-bottom:14px}
+.fb-config-box ol{padding-left:18px;color:var(--text-dim);font-size:.8rem;line-height:2.1;margin-bottom:16px}
+.fb-config-box code{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-size:.78rem;color:var(--accent)}
+.fb-textarea{width:100%;min-height:120px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:var(--radius-sm);font-size:.78rem;font-family:var(--font-mono);outline:none;resize:vertical;margin-bottom:12px}
+.fb-textarea:focus{border-color:var(--accent)}
+.demo-note{font-size:.75rem;color:var(--text-muted);margin-top:10px;padding:10px;background:rgba(201,169,110,.07);border:1px solid rgba(201,169,110,.2);border-radius:var(--radius-sm);line-height:1.6}
+
+/* LOGIN */
+#login-screen{position:fixed;inset:0;z-index:7000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:36px 32px;width:100%;max-width:420px;box-shadow:var(--shadow)}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo .wordmark{font-size:1.4rem;font-weight:700;letter-spacing:.18em;color:var(--accent);text-transform:uppercase;display:block}
+.login-logo .sub{font-size:.72rem;color:var(--text-muted);letter-spacing:.2em;text-transform:uppercase;margin-top:4px;display:block}
+.login-divider{border:none;border-top:1px solid var(--border);margin:18px 0}
+.login-error{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5;padding:9px 12px;border-radius:var(--radius-sm);font-size:.8rem;margin-bottom:14px;display:none}
+.login-error.show{display:block}
+.google-btn{width:100%;background:#fff;color:#1f2937;border:1px solid #d1d5db;border-radius:var(--radius-sm);padding:10px 16px;font-size:.85rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .2s;margin-bottom:8px}
+.google-btn:hover{background:#f9fafb}
+.google-icon{width:18px;height:18px}
+.forgot-link{font-size:.75rem;color:var(--text-muted);text-align:right;display:block;margin-top:-8px;margin-bottom:12px;cursor:pointer}
+.forgot-link:hover{color:var(--accent)}
+#reset-panel{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;display:none}
+#reset-panel.show{display:block}
+#reset-panel p{font-size:.78rem;color:var(--text-muted);margin-bottom:8px}
+
+/* TOPBAR */
+#topbar{position:fixed;top:0;left:0;right:0;z-index:300;height:var(--topbar-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 18px;box-shadow:0 2px 16px rgba(0,0,0,.4)}
+#topbar .logo{font-size:1.1rem;font-weight:700;letter-spacing:.08em;color:var(--accent);text-transform:uppercase;flex-shrink:0}
+#topbar .logo span{color:var(--text-muted);font-weight:400}
+.spacer{flex:1}
+#search-input{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:var(--radius-sm);width:200px;outline:none;transition:border-color .2s}
+#search-input:focus{border-color:var(--accent)}
+#search-input::placeholder{color:var(--text-muted)}
+#user-badge{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px 10px;font-size:.75rem;flex-shrink:0}
+#user-badge .avatar{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#0f1117;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#user-badge .uname{color:var(--text);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.role-pill{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:2px 6px;border-radius:20px}
+.role-pill.admin{background:rgba(201,169,110,.2);color:var(--accent);border:1px solid rgba(201,169,110,.35)}
+.role-pill.staff{background:rgba(59,130,246,.2);color:#93c5fd;border:1px solid rgba(59,130,246,.35)}
+.role-pill.vendor{background:rgba(20,184,166,.2);color:#5eead4;border:1px solid rgba(20,184,166,.35)}
+#logout-btn{background:none;border:none;color:var(--text-muted);font-size:.72rem;padding:2px 4px;border-radius:4px}
+#logout-btn:hover{color:var(--red)}
+.topbar-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 14px;border-radius:var(--radius-sm);font-size:.8rem;letter-spacing:.05em;transition:background .2s,border-color .2s;white-space:nowrap}
+.topbar-btn:hover{background:var(--border);border-color:var(--accent)}
+.topbar-btn.accent{background:var(--accent);border-color:var(--accent);color:#0f1117;font-weight:700}
+.topbar-btn.accent:hover{background:var(--accent2);border-color:var(--accent2)}
+
+/* FILTER BAR */
+#filterbar{position:fixed;top:var(--topbar-h);left:0;right:0;z-index:290;background:var(--surface);border-bottom:1px solid var(--border);padding:6px 18px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;min-height:var(--filter-h)}
+.filter-select{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:var(--radius-sm);font-size:.76rem;outline:none;cursor:pointer}
+.filter-select:focus{border-color:var(--accent)}
+#filter-label{font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em}
+#clear-filters{font-size:.72rem;background:none;border:none;color:var(--accent);text-decoration:underline;padding:2px 4px}
+#staff-notice{margin-left:auto;font-size:.68rem;color:var(--text-muted);background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);padding:3px 10px;border-radius:20px;white-space:nowrap}
+
+/* WORKFLOW LEGEND */
+#workflow-legend{position:fixed;top:calc(var(--topbar-h) + var(--filter-h));left:0;right:0;z-index:280;background:rgba(15,17,23,.96);border-bottom:1px solid var(--border);padding:5px 18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;min-height:var(--legend-h);backdrop-filter:blur(4px)}
+.legend-path{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.legend-badge{font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:1px 8px;border-radius:20px;font-size:.65rem;flex-shrink:0;white-space:nowrap}
+.legend-badge.sample{background:rgba(168,85,247,.18);color:var(--path-sample);border:1px solid rgba(168,85,247,.35)}
+.legend-badge.direct{background:rgba(20,184,166,.14);color:var(--path-direct);border:1px solid rgba(20,184,166,.3)}
+.legend-step{font-size:.64rem;color:var(--text-dim);white-space:nowrap}
+.legend-arrow{font-size:.64rem;color:var(--text-muted)}
+.legend-sep{width:1px;height:18px;background:var(--border);flex-shrink:0;margin:0 4px}
+
+/* BOARD */
+#board-wrap{margin-top:0;padding:14px 20px 20px;overflow-x:auto;min-height:calc(100vh - var(--header-total) - 50px)}
+#board{display:flex;gap:14px;align-items:flex-start;min-width:max-content;padding-bottom:40px}
+.path-group{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.path-group-header{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:var(--radius-sm);font-size:.64rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em}
+.path-group-header.sample{background:rgba(168,85,247,.1);color:var(--path-sample);border:1px solid rgba(168,85,247,.2)}
+.path-group-header.direct{background:rgba(20,184,166,.08);color:var(--path-direct);border:1px solid rgba(20,184,166,.18)}
+.path-group-header.shared{background:rgba(201,169,110,.08);color:var(--accent);border:1px solid rgba(201,169,110,.18)}
+.path-cols{display:flex;gap:14px;align-items:flex-start}
+
+/* KANBAN COLUMN */
+.kanban-col{width:var(--col-w);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;max-height:calc(100vh - var(--header-total) - 60px);flex-shrink:0;transition:border-color .2s;position:relative}
+.kanban-col[data-path="sample"]{border-top:2px solid rgba(168,85,247,.5)}
+.kanban-col[data-path="direct"]{border-top:2px solid rgba(20,184,166,.5)}
+.kanban-col[data-path="shared"]{border-top:2px solid rgba(201,169,110,.4)}
+.kanban-col.drag-over{border-color:var(--accent);box-shadow:0 0 0 2px rgba(201,169,110,.25)}
+.col-header{padding:11px 13px 9px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;user-select:none}
+.col-header.draggable{cursor:grab}.col-header.draggable:active{cursor:grabbing}
+.col-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.col-dot.sample{background:var(--path-sample)}.col-dot.direct{background:var(--path-direct)}.col-dot.shared{background:var(--accent)}
+.col-name{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--text);flex:1;min-width:0;background:none;border:none;outline:none}
+.col-count{font-size:.7rem;background:var(--surface2);color:var(--text-muted);padding:1px 7px;border-radius:20px;font-weight:600;flex-shrink:0}
+.col-menu-btn{background:none;border:none;color:var(--text-muted);font-size:1rem;padding:2px 4px;border-radius:4px;line-height:1;flex-shrink:0}
+.col-menu-btn:hover{background:var(--border);color:var(--text)}
+.col-cards{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:8px;min-height:60px}
+.col-add-btn{margin:4px 8px 8px;background:none;border:1px dashed var(--border);color:var(--text-muted);border-radius:var(--radius-sm);padding:6px;width:calc(100% - 16px);font-size:.74rem;transition:all .2s;flex-shrink:0}
+.col-add-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(201,169,110,.06)}
+#add-col-btn{width:160px;min-height:80px;background:var(--surface);border:2px dashed var(--border);border-radius:var(--radius);color:var(--text-muted);font-size:.8rem;display:flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;transition:all .2s}
+#add-col-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ORDER CARD */
+.order-card{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;cursor:grab;position:relative;overflow:hidden;transition:box-shadow .2s,transform .15s,border-color .2s;user-select:none;-webkit-user-select:none;touch-action:pan-x pan-y}
+.order-card.touch-dragging{touch-action:none;opacity:.5}
+.order-card:active{cursor:grabbing}
+.order-card:hover{box-shadow:var(--shadow);border-color:rgba(201,169,110,.4)}
+.order-card.dragging{opacity:.5;transform:rotate(1.5deg)}
+/* STUCK ALERT: card pulses red if it sat in one stage past its ready date or the stuck-days limit */
+.order-card.stuck{border-color:var(--red)!important;animation:stuck-blink 1.3s ease-in-out infinite}
+@keyframes stuck-blink{
+  0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}
+  50%    {box-shadow:0 0 0 3px rgba(239,68,68,.55)}
+}
+.stuck-flag{display:inline-flex;align-items:center;gap:4px;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#fff;background:var(--red);padding:2px 7px;border-radius:20px;margin-top:5px}
+body.role-staff .order-card{cursor:grab}  /* staff can drag cards */
+.order-card::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--card-status-color,var(--text-muted))}
+.card-path-strip{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:3px 12px;margin:-10px -12px 8px -12px;display:flex;align-items:center;gap:5px}
+.card-path-strip.sample{background:rgba(168,85,247,.13);color:var(--path-sample);border-bottom:1px solid rgba(168,85,247,.22)}
+.card-path-strip.direct{background:rgba(20,184,166,.1);color:var(--path-direct);border-bottom:1px solid rgba(20,184,166,.2)}
+.card-path-strip.shared{background:rgba(201,169,110,.08);color:var(--accent);border-bottom:1px solid rgba(201,169,110,.18)}
+.card-top{display:flex;align-items:flex-start;gap:6px;margin-bottom:5px}
+.card-order-num{font-size:.66rem;font-family:var(--font-mono);color:var(--accent);font-weight:700;letter-spacing:.04em;flex-shrink:0}
+.card-customer{font-size:.82rem;font-weight:600;color:var(--text);line-height:1.3;flex:1;word-break:break-word}
+.card-status-badge{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 6px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.card-image-area{margin:7px 0}
+.card-image-thumb{width:100%;height:90px;object-fit:cover;border-radius:var(--radius-sm);display:block;cursor:pointer}
+.card-image-placeholder{width:100%;height:68px;background:rgba(255,255,255,.03);border:1.5px dashed var(--border);border-radius:var(--radius-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--text-muted);font-size:.66rem;cursor:pointer;transition:background .2s,border-color .2s}
+.card-image-placeholder:hover{background:rgba(201,169,110,.06);border-color:var(--accent);color:var(--accent)}
+.card-image-placeholder.sample{border-color:rgba(168,85,247,.3)}.card-image-placeholder.sample:hover{border-color:var(--path-sample);color:var(--path-sample)}
+.card-image-placeholder.direct{border-color:rgba(20,184,166,.25)}.card-image-placeholder.direct:hover{border-color:var(--path-direct);color:var(--path-direct)}
+.ph-icon{font-size:1.1rem}
+.card-meta{display:flex;flex-wrap:wrap;gap:4px;font-size:.7rem;color:var(--text-dim);margin-top:4px}
+.card-chip{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:4px;padding:1px 6px}
+.card-date{font-size:.66rem;color:var(--text-muted);margin-top:4px;display:flex;align-items:center;gap:4px}
+.card-date.overdue{color:var(--red)}
+.card-note{font-size:.7rem;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic}
+.card-tracking{font-size:.66rem;font-family:var(--font-mono);color:var(--path-direct);margin-top:3px}
+/* Vendor tag shown on cards — only visible to admin */
+.card-vendor-tag{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border-radius:20px;background:rgba(20,184,166,.15);color:#5eead4;border:1px solid rgba(20,184,166,.3);display:inline-flex;align-items:center;gap:4px;margin-top:4px}
+/* Admin vendor filter pill in filterbar */
+.vendor-filter-wrap{display:flex;align-items:center;gap:4px}
+.card-progress{margin-top:7px}
+.card-progress-label{font-size:.6rem;color:var(--text-muted);display:flex;justify-content:space-between;margin-bottom:3px}
+.card-progress-bar{height:3px;border-radius:2px;background:var(--border);overflow:hidden}
+.card-progress-fill{height:100%;border-radius:2px;transition:width .4s}
+
+/* TIMELINE */
+.order-timeline{display:flex;gap:0;margin:14px 0;overflow-x:auto;padding-bottom:6px}
+.timeline-step{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.ts-dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;position:relative;z-index:1;transition:all .25s}
+.timeline-step.done .ts-dot{background:var(--green);border-color:var(--green);color:#fff}
+.timeline-step.active .ts-dot{background:var(--accent);border-color:var(--accent);color:#0f1117}
+.timeline-step.future .ts-dot{color:var(--text-muted)}
+.ts-label{font-size:.56rem;text-align:center;color:var(--text-muted);margin-top:5px;max-width:64px;line-height:1.3}
+.timeline-step.done .ts-label{color:var(--green)}
+.timeline-step.active .ts-label{color:var(--accent);font-weight:700}
+.ts-connector{flex:1;height:2px;min-width:14px;background:var(--border);align-self:center;margin-top:-22px}
+.ts-connector.done{background:var(--green)}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.78);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
+.overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow);transform:translateY(16px);transition:transform .25s}
+.overlay.open .modal{transform:translateY(0)}
+.modal-header{padding:18px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;position:sticky;top:0;background:var(--surface);z-index:2}
+.modal-title{font-size:.95rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);flex:1}
+.modal-close{background:none;border:none;color:var(--text-muted);font-size:1.3rem;line-height:1;padding:2px 6px;border-radius:4px;transition:color .15s,background .15s}
+.modal-close:hover{color:var(--text);background:var(--border)}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;position:sticky;bottom:0;background:var(--surface);z-index:2}
+
+/* PATH CHOOSER */
+.path-chooser{display:flex;gap:10px;margin-bottom:16px}
+.path-choice{flex:1;border:2px solid var(--border);border-radius:var(--radius-sm);padding:12px 10px;cursor:pointer;transition:all .2s;text-align:center;background:var(--surface2)}
+.path-choice:hover{border-color:var(--accent)}
+.path-choice.selected.sample{border-color:var(--path-sample);background:rgba(168,85,247,.1)}
+.path-choice.selected.direct{border-color:var(--path-direct);background:rgba(20,184,166,.1)}
+.path-choice .pc-icon{font-size:1.4rem;display:block;margin-bottom:4px}
+.path-choice .pc-label{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.path-choice.sample .pc-label{color:var(--path-sample)}
+.path-choice.direct .pc-label{color:var(--path-direct)}
+.path-choice .pc-desc{font-size:.68rem;color:var(--text-muted);margin-top:3px}
+
+/* IMAGE SECTION */
+.img-upload-zone{border:2px dashed var(--border);border-radius:var(--radius-sm);padding:16px;text-align:center;transition:border-color .2s,background .2s;background:rgba(255,255,255,.02)}
+.img-upload-zone.sample{border-color:rgba(168,85,247,.35)}
+.img-upload-zone.direct{border-color:rgba(20,184,166,.3)}
+.img-upload-zone .uz-icon{font-size:1.6rem;margin-bottom:6px}
+.img-upload-zone .uz-label{font-size:.78rem;color:var(--text-muted)}
+.img-upload-zone .uz-sub{font-size:.68rem;color:var(--text-muted);margin-top:3px}
+.img-preview{width:100%;max-height:160px;object-fit:contain;border-radius:var(--radius-sm);margin-top:10px;display:none}
+.img-url-row{display:flex;gap:8px;margin-top:10px}
+
+/* SETTINGS */
+#settings-overlay .modal{max-width:800px}
+.settings-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:14px 20px 0;border-bottom:1px solid var(--border)}
+.settings-tab{background:none;border:none;color:var(--text-muted);font-size:.73rem;text-transform:uppercase;letter-spacing:.1em;padding:7px 13px;border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:600;transition:color .2s,border-color .2s}
+.settings-tab:hover{color:var(--text)}
+.settings-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.settings-pane{display:none;padding:20px}
+.settings-pane.active{display:block}
+.settings-list{display:flex;flex-direction:column;gap:8px}
+.settings-item{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px}
+.settings-item input[type="text"]{flex:1;background:none;border:none;color:var(--text);font-size:.82rem;outline:none;min-width:0}
+.settings-item input[type="color"]{width:30px;height:24px;border:none;border-radius:4px;background:none;cursor:pointer;padding:0}
+.drag-handle{color:var(--text-muted);cursor:grab;font-size:.9rem;padding:0 2px;user-select:none}
+.drag-handle:active{cursor:grabbing}
+.wf-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:12px}
+.wf-box h4{font-size:.82rem;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em}
+.wf-box p{font-size:.78rem;color:var(--text-muted);margin-bottom:8px;line-height:1.6}
+.wf-flow{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.wf-stage{font-size:.72rem;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:4px;padding:3px 8px;color:var(--text-dim)}
+.wf-arrow{font-size:.72rem;color:var(--text-muted)}
+.user-row{display:grid;grid-template-columns:1fr 110px auto;gap:8px;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;font-size:.8rem}
+.user-row .email{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-row .uid{color:var(--text-muted);font-size:.65rem;font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.role-select{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:var(--radius-sm);font-size:.74rem;outline:none;cursor:pointer}
+.role-select:focus{border-color:var(--accent)}
+.invite-note{font-size:.76rem;color:var(--text-muted);line-height:1.7;margin-bottom:14px}
+.invite-note code{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:.74rem;color:var(--accent)}
+.inv-table{width:100%;border-collapse:collapse}
+.inv-table th,.inv-table td{text-align:left;padding:7px 10px;font-size:.79rem;border-bottom:1px solid var(--border)}
+.inv-table th{color:var(--text-muted);text-transform:uppercase;font-size:.67rem;letter-spacing:.1em}
+.inv-table tr:last-child td{border-bottom:none}
+.inv-qty-input{width:80px;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:var(--radius-sm);font-size:.79rem;outline:none}
+.inv-qty-input:focus{border-color:var(--accent)}
+.stock-ok{color:var(--green)}.stock-low{color:var(--yellow)}.stock-out{color:var(--red)}
+
+/* FORMS */
+.form-group{margin-bottom:13px}
+.form-group label{display:block;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-bottom:5px}
+.form-control{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius-sm);font-size:.84rem;outline:none;transition:border-color .2s}
+.form-control:focus{border-color:var(--accent)}
+.form-control::placeholder{color:var(--text-muted)}
+textarea.form-control{min-height:75px;resize:vertical}
+select.form-control{cursor:pointer}
+select.form-control option{background:var(--surface2)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.form-row{grid-template-columns:1fr}}
+.form-section-title{font-size:.67rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-weight:700;margin:16px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.btn{padding:8px 18px;border-radius:var(--radius-sm);font-size:.79rem;font-weight:600;letter-spacing:.05em;border:1px solid transparent;transition:all .2s}
+.btn-primary{background:var(--accent);color:#0f1117;border-color:var(--accent)}
+.btn-primary:hover{background:var(--accent2);border-color:var(--accent2)}
+.btn-secondary{background:var(--surface2);color:var(--text);border-color:var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.btn-danger{background:rgba(239,68,68,.15);color:var(--red);border-color:rgba(239,68,68,.35)}
+.btn-danger:hover{background:rgba(239,68,68,.25)}
+.btn-sm{padding:5px 12px;font-size:.73rem}
+.btn-icon{padding:5px 8px;font-size:.8rem}
+
+/* COL CONTEXT MENU */
+#col-menu{position:fixed;z-index:2000;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 0;min-width:160px;box-shadow:var(--shadow);display:none}
+.col-menu-item{display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:.79rem;padding:8px 16px;cursor:pointer;transition:background .15s}
+.col-menu-item:hover{background:var(--border)}
+
+/* TOAST */
+#toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+
+/* ACTIVITY LOG — per-order history shown in edit modal */
+.activity-log{max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.activity-entry{display:flex;gap:8px;align-items:flex-start;font-size:.72rem;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.activity-entry .ae-icon{flex-shrink:0;font-size:.8rem}
+.activity-entry .ae-text{flex:1;color:var(--text-dim);line-height:1.4}
+.activity-entry .ae-text b{color:var(--text)}
+.activity-entry .ae-time{flex-shrink:0;color:var(--text-muted);font-size:.64rem;font-family:var(--font-mono);white-space:nowrap}
+
+/* STATS BAR — quick counts for admin & vendors */
+#stats-bar{display:flex;gap:10px;flex-wrap:wrap;padding:0 20px;margin-top:calc(var(--header-total) + 10px)}
+.stat-chip{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 14px;font-size:.76rem;cursor:pointer;transition:border-color .2s}
+.stat-chip:hover{border-color:var(--accent)}
+.stat-chip .num{font-size:1.05rem;font-weight:700}
+.stat-chip .lbl{color:var(--text-muted);text-transform:uppercase;font-size:.62rem;letter-spacing:.08em}
+.stat-chip.total .num{color:var(--accent)}
+.stat-chip.ok .num{color:var(--green)}
+.stat-chip.hold .num{color:var(--yellow)}
+.stat-chip.late .num{color:var(--red)}
+@media(max-width:640px){#stats-bar{padding:0 12px 4px;gap:6px}.stat-chip{padding:5px 10px}}
+.toast{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 16px;border-radius:var(--radius-sm);font-size:.81rem;box-shadow:var(--shadow);animation:toast-in .3s ease forwards;max-width:300px}
+.toast.success{border-left:3px solid var(--green)}.toast.error{border-left:3px solid var(--red)}.toast.info{border-left:3px solid var(--accent)}
+@keyframes toast-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* UTILITY */
+.empty-col{text-align:center;color:var(--text-muted);font-size:.74rem;padding:18px 10px;pointer-events:none}
+.hidden{display:none !important}
+.mt-8{margin-top:8px}.mt-12{margin-top:12px}
+.flex-gap{display:flex;gap:8px;align-items:center}
+
+@media(max-width:640px){
+  :root{--col-w:258px;--header-total:96px}
+  #search-input{width:100px}
+  #topbar .logo span{display:none}
+  .overlay{align-items:flex-end;padding:0}
+  .modal{border-radius:var(--radius) var(--radius) 0 0;max-height:92vh}
+  #workflow-legend{display:none}
+  #user-badge .uname{max-width:60px}
+  #staff-notice{display:none}
+}
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="loading-brand">VandenLoom</div>
+  <div class="spinner"></div>
+  <div class="loading-sub">Production Tracker</div>
+</div>
+
+<div id="fb-config-screen" class="hidden">
+  <div class="fb-config-box">
+    <h2>&#128293; Connect Firebase</h2>
+    <p>Paste your Firebase config JSON. Uses <strong>Firebase Auth</strong> + <strong>Realtime Database</strong>. Free Spark plan works.</p>
+    <ol>
+      <li>Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a></li>
+      <li>Create project &rarr; Add Web App &rarr; copy config</li>
+      <li>Enable <strong>Realtime Database</strong> (test mode)</li>
+      <li>Enable <strong>Authentication &rarr; Email/Password</strong> (+ optional Google)</li>
+    </ol>
+    <textarea class="fb-textarea" id="fb-config-input" placeholder='{"apiKey":"...","authDomain":"...","databaseURL":"https://project-rtdb.firebaseio.com","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'></textarea>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="App.connectFirebase()">Connect &amp; Launch</button>
+      <button class="btn btn-secondary" onclick="App.demoMode()">Demo Mode (no Firebase)</button>
+    </div>
+    <div class="demo-note">&#9889; <strong>Demo Mode</strong> uses localStorage. Full admin access, no login, single device only.</div>
+  </div>
+</div>
+
+<div id="login-screen" class="hidden">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="wordmark">VandenLoom</span>
+      <span class="sub">Production Tracker</span>
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button class="google-btn" id="google-btn" onclick="Auth.signInWithGoogle()">
+      <svg class="google-icon" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Continue with Google
+    </button>
+    <hr class="login-divider"/>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" class="form-control" id="login-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')Auth.signInEmail()" autocomplete="email"/>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" class="form-control" id="login-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" onkeydown="if(event.key==='Enter')Auth.signInEmail()" autocomplete="current-password"/>
+    </div>
+    <span class="forgot-link" onclick="Auth.toggleReset()">Forgot password?</span>
+    <div id="reset-panel">
+      <p>Enter your email above then click Send.</p>
+      <button class="btn btn-secondary btn-sm" onclick="Auth.sendReset()">Send Reset Email</button>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="Auth.signInEmail()">Sign In</button>
+    <button class="btn btn-secondary" style="width:100%" onclick="Auth.registerEmail()">Create Account</button>
+    <p style="font-size:.71rem;color:var(--text-muted);margin-top:14px;text-align:center">New accounts start as <strong>staff</strong>. Admins promote via Settings &rarr; Users.</p>
+  </div>
+</div>
+
+<div id="topbar">
+  <div class="logo">VandenLoom <span>/ Tracker</span></div>
+  <div class="spacer"></div>
+  <input type="text" id="search-input" placeholder="&#128269; Search&hellip;" oninput="App.onSearch()"/>
+  <button class="topbar-btn" id="settings-btn" onclick="App.openSettings()">&#9881; Settings</button>
+  <button class="topbar-btn accent" onclick="App.openNewOrder()">&#xFF0B; New Order</button>
+  <div id="user-badge">
+    <div class="avatar" id="user-avatar">?</div>
+    <span class="uname" id="user-name-display">&hellip;</span>
+    <span class="role-pill" id="user-role-pill">&mdash;</span>
+    <button id="logout-btn" onclick="Auth.signOut()" title="Sign out">&#9167;</button>
+  </div>
+</div>
+
+<div id="filterbar">
+  <span id="filter-label">Filter:</span>
+  <select class="filter-select" id="f-path" onchange="App.applyFilters()">
+    <option value="">All Paths</option>
+    <option value="sample">Path A &mdash; Sample</option>
+    <option value="direct">Path B &mdash; Direct</option>
+  </select>
+  <select class="filter-select" id="f-stage"    onchange="App.applyFilters()"><option value="">All Stages</option></select>
+  <select class="filter-select" id="f-status"   onchange="App.applyFilters()">
+    <option value="">All Statuses</option>
+    <option value="on-schedule">On Schedule</option>
+    <option value="on-hold">On Hold</option>
+    <option value="delayed">Delayed</option>
+  </select>
+  <select class="filter-select" id="f-category" onchange="App.applyFilters()"><option value="">All Categories</option></select>
+  <select class="filter-select" id="f-material" onchange="App.applyFilters()"><option value="">All Materials</option></select>
+  <select class="filter-select" id="f-custtype" onchange="App.applyFilters()">
+    <option value="">New / Repeat</option>
+    <option value="New">New</option>
+    <option value="Repeat">Repeat</option>
+  </select>
+  <button id="clear-filters" onclick="App.clearFilters()">Clear</button>
+  <!-- Vendor filter: only rendered/visible when logged in as admin -->
+  <select class="filter-select hidden" id="f-vendor" onchange="App.applyFilters()"><option value="">All Vendors</option></select>
+  <span id="staff-notice" class="hidden">&#128065; View &amp; move cards only</span>
+  <span id="vendor-notice" class="hidden" style="margin-left:auto;font-size:.68rem;color:#5eead4;background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.2);padding:3px 10px;border-radius:20px;white-space:nowrap">&#127991; Showing your orders only</span>
+</div>
+
+<!-- STATS BAR: live counts, click to filter -->
+<div id="stats-bar">
+  <div class="stat-chip total" onclick="App.statFilter('')"><span class="num" id="stat-total">0</span><span class="lbl">Total</span></div>
+  <div class="stat-chip ok"    onclick="App.statFilter('on-schedule')"><span class="num" id="stat-ok">0</span><span class="lbl">On Schedule</span></div>
+  <div class="stat-chip hold"  onclick="App.statFilter('on-hold')"><span class="num" id="stat-hold">0</span><span class="lbl">On Hold</span></div>
+  <div class="stat-chip late"  onclick="App.statFilter('delayed')"><span class="num" id="stat-late">0</span><span class="lbl">Delayed</span></div>
+</div>
+
+<div id="workflow-legend">
+  <div class="legend-path">
+    <span class="legend-badge sample">Path A</span>
+    <span class="legend-step">Pending</span><span class="legend-arrow">&rsaquo;</span>
+    <span class="legend-step">Sample Weaving</span><span class="legend-arrow">&rsaquo;</span>
+    <span class="legend-step">Ready to Ship</span><span class="legend-arrow">&rsaquo;</span>
+    <span class="legend-step">Awaiting Approval</span><span class="legend-arrow">&rsaquo;</span>
+    <span class="legend-step">Sample Approved</span>
+    <span class="legend-arrow" style="color:var(--path-direct)">&rarr; Path B</span>
+  </div>
+  <div class="legend-sep"></div>
+  <div class="legend-path">
+    <span class="legend-badge direct">Path B</span>
+    <span class="legend-step">Rug Weaving</span><span class="legend-arrow">&rsaquo;</span>
+    <span class="legend-step">Washing &amp; Blocking</span><span class="legend-arrow">&rsaquo;</span>
+    <span class="legend-step">Inspection &amp; Packing</span><span class="legend-arrow">&rsaquo;</span>
+    <span class="legend-step">Shipped</span><span class="legend-arrow">&rsaquo;</span>
+    <span class="legend-step">Completed</span>
+  </div>
+</div>
+
+<div id="board-wrap"><div id="board"></div></div>
+
+<!-- ORDER MODAL -->
+<div class="overlay" id="order-overlay" onclick="App.overlayClick(event,'order-overlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="order-modal-title">New Order</div>
+      <button class="modal-close" onclick="App.closeModal('order-overlay')">&#10005;</button>
+    </div>
+    <div class="modal-body" id="order-form-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" id="delete-order-btn" onclick="App.deleteOrder()" style="margin-right:auto;display:none">Delete</button>
+      <button class="btn btn-secondary btn-sm" onclick="App.closeModal('order-overlay')">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="save-order-btn" onclick="App.saveOrder()">Save Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="overlay" id="settings-overlay" onclick="App.overlayClick(event,'settings-overlay')">
+  <div class="modal" id="settings-modal">
+    <div class="modal-header">
+      <div class="modal-title">&#9881; Settings</div>
+      <button class="modal-close" onclick="App.closeModal('settings-overlay')">&#10005;</button>
+    </div>
+    <div class="settings-tabs">
+      <button class="settings-tab active" onclick="App.switchSettingsTab('stages',this)">Stages</button>
+      <button class="settings-tab" onclick="App.switchSettingsTab('workflow',this)">Workflow</button>
+      <button class="settings-tab" onclick="App.switchSettingsTab('categories',this)">Categories</button>
+      <button class="settings-tab" onclick="App.switchSettingsTab('fields',this)">Order Fields</button>
+      <button class="settings-tab" onclick="App.switchSettingsTab('materials',this)">Materials</button>
+      <button class="settings-tab" onclick="App.switchSettingsTab('colors',this)">Colors</button>
+      <button class="settings-tab" onclick="App.switchSettingsTab('users',this)">Users</button>
+    </div>
+    <div class="settings-pane active" id="pane-stages">
+      <p style="font-size:.77rem;color:var(--text-muted);margin-bottom:12px">Drag to reorder. Assign each stage to a path. Syncs instantly.</p>
+      <div class="settings-list" id="stages-list"></div>
+      <div class="flex-gap mt-12">
+        <input type="text" class="form-control" id="new-stage-input" placeholder="Stage name&hellip;" style="flex:2"/>
+        <select class="form-control" id="new-stage-path" style="flex:1">
+          <option value="shared">Shared</option><option value="sample">Sample</option><option value="direct">Direct</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="App.addStage()">Add</button>
+      </div>
+    </div>
+    <div class="settings-pane" id="pane-workflow">
+      <div class="wf-box"><h4 style="color:var(--path-sample)">&#129525; Path A &mdash; Sample Approval</h4><p>Customer approves a sample before full production. Sample image uploaded at &ldquo;Ready to Ship (Sample)&rdquo;.</p><div class="wf-flow"><span class="wf-stage">Pending</span><span class="wf-arrow">&rarr;</span><span class="wf-stage">Sample Weaving Started</span><span class="wf-arrow">&rarr;</span><span class="wf-stage">Ready to Ship (Sample)</span><span class="wf-arrow">&rarr;</span><span class="wf-stage">Awaiting Approval</span><span class="wf-arrow">&rarr;</span><span class="wf-stage">Sample Approved</span><span class="wf-arrow" style="color:var(--path-direct)">&rarr; enters Path B</span></div></div>
+      <div class="wf-box"><h4 style="color:var(--path-direct)">&#129521; Path B &mdash; Direct Production</h4><p>No sample needed, or entered after Sample Approved. Product images uploaded at Inspection &amp; Packing.</p><div class="wf-flow"><span class="wf-stage">Rug Weaving Started</span><span class="wf-arrow">&rarr;</span><span class="wf-stage">Washing &amp; Blocking</span><span class="wf-arrow">&rarr;</span><span class="wf-stage">Inspection &amp; Packing</span><span class="wf-arrow">&rarr;</span><span class="wf-stage">Shipped</span><span class="wf-arrow">&rarr;</span><span class="wf-stage">Completed</span></div></div>
+      <div class="wf-box"><h4 style="color:var(--accent)">&#9881; Shared Stages</h4><p><strong>Pending</strong> &mdash; entry point. <strong>On Hold</strong> &mdash; any point. <strong>Completed</strong> &mdash; final.</p></div>
+    </div>
+    <div class="settings-pane" id="pane-categories">
+      <div class="settings-list" id="categories-list"></div>
+      <div class="flex-gap mt-12"><input type="text" class="form-control" id="new-cat-input" placeholder="Category name&hellip;" style="flex:1"/><button class="btn btn-primary btn-sm" onclick="App.addCategory()">Add</button></div>
+    </div>
+    <div class="settings-pane" id="pane-fields">
+      <p style="font-size:.77rem;color:var(--text-muted);margin-bottom:12px">Toggle visibility. Core fields cannot be removed.</p>
+      <div id="fields-list"></div>
+      <div class="flex-gap mt-12">
+        <input type="text" class="form-control" id="new-field-key" placeholder="Field key (camelCase)&hellip;" style="flex:1"/>
+        <input type="text" class="form-control" id="new-field-label" placeholder="Label&hellip;" style="flex:1"/>
+        <button class="btn btn-primary btn-sm" onclick="App.addCustomField()">Add</button>
+      </div>
+    </div>
+    <div class="settings-pane" id="pane-materials">
+      <table class="inv-table"><thead><tr><th>Material</th><th>Qty</th><th>Unit</th><th>Status</th><th></th></tr></thead><tbody id="materials-tbody"></tbody></table>
+      <div class="mt-12" style="display:grid;grid-template-columns:1fr 80px 70px auto;gap:8px;align-items:end">
+        <div><label style="font-size:.67rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted)">Name</label><input type="text" class="form-control" id="new-mat-name" placeholder="e.g. Wool"/></div>
+        <div><label style="font-size:.67rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted)">Qty</label><input type="number" class="form-control" id="new-mat-qty" placeholder="100" min="0"/></div>
+        <div><label style="font-size:.67rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted)">Unit</label><input type="text" class="form-control" id="new-mat-unit" placeholder="kg"/></div>
+        <button class="btn btn-primary btn-sm" style="margin-top:18px" onclick="App.addMaterial()">Add</button>
+      </div>
+    </div>
+    <div class="settings-pane" id="pane-colors">
+      <p style="font-size:.77rem;color:var(--text-muted);margin-bottom:16px">Customize the status stripe colour on each card.</p>
+      <div class="settings-list">
+        <div class="settings-item"><span style="font-size:.8rem;flex:1">&#128994; On Schedule</span><input type="color" id="color-on-schedule" onchange="App.saveColor('on-schedule',this.value)"/></div>
+        <div class="settings-item"><span style="font-size:.8rem;flex:1">&#128993; On Hold</span><input type="color" id="color-on-hold" onchange="App.saveColor('on-hold',this.value)"/></div>
+        <div class="settings-item"><span style="font-size:.8rem;flex:1">&#128308; Delayed</span><input type="color" id="color-delayed" onchange="App.saveColor('delayed',this.value)"/></div>
+      </div>
+      <div class="form-section-title" style="margin-top:20px">Stuck Alert</div>
+      <p style="font-size:.77rem;color:var(--text-muted);margin-bottom:10px">Orders that sit in one stage past their ready date — or longer than this many days — blink red to alert you.</p>
+      <div class="settings-item">
+        <span style="font-size:.8rem;flex:1">&#128308; Blink if stuck for more than</span>
+        <input type="number" min="1" max="365" id="stuck-days-input" class="inv-qty-input" style="width:70px" onchange="App.saveStuckDays(this.value)"/>
+        <span style="font-size:.8rem;color:var(--text-muted)">days</span>
+      </div>
+    </div>
+    <div class="settings-pane" id="pane-users">
+      <p class="invite-note">Users appear after first sign-in. New accounts default to <code>staff</code>. Change role below &mdash; takes effect immediately. Admins cannot demote themselves.</p>
+      <div class="settings-list" id="users-list" style="gap:6px"></div>
+    </div>
+  </div>
+</div>
+
+<div id="col-menu">
+  <button class="col-menu-item" onclick="App.renameColPrompt()">&#9999;&#65039; Rename Stage</button>
+  <button class="col-menu-item" onclick="App.changeColPath()">&#128260; Change Path</button>
+  <button class="col-menu-item" onclick="App.deleteColConfirm()">&#128465;&#65039; Delete Stage</button>
+</div>
+<!-- CONFIRM DIALOG: reusable yes/no popup (used for card moves) -->
+<div class="overlay" id="confirm-overlay" onclick="App.overlayClick(event,'confirm-overlay')">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <div class="modal-title" id="confirm-title">Confirm</div>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-message" style="font-size:.9rem;line-height:1.6;color:var(--text)"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" onclick="App.confirmNo()">No, cancel</button>
+      <button class="btn btn-primary btn-sm" id="confirm-yes-btn" onclick="App.confirmYes()">Yes, move it</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script>
+'use strict';
+/* ═══════════════════════════════════════════════════════════
+   WORKFLOW DEFINITION
+   Two branching paths from Pending.
+   Path A (sample): customer approves sample before production.
+   Path B (direct): straight to production, or after sample approved.
+═══════════════════════════════════════════════════════════ */
+const WORKFLOW = {
+  sampleSteps: [
+    'Pending',
+    'Sample Weaving Started',
+    'Ready to Ship (Sample)',
+    'Awaiting Approval',
+    'Sample Approved'
+  ],
+  directSteps: [
+    'Rug Weaving Started',
+    'Washing & Blocking',
+    'Inspection & Packing',
+    'Shipped',
+    'Completed'
+  ],
+  /* Which path does a stage name belong to? */
+  pathOf(name) {
+    if (this.sampleSteps.includes(name)) return 'sample';
+    if (this.directSteps.includes(name)) return 'direct';
+    return 'shared';
+  },
+  /* 0-1 progress for the card's active path */
+  progress(order) {
+    const path  = order.workflowPath || 'direct';
+    const steps = path === 'sample' ? this.sampleSteps : this.directSteps;
+    const idx   = steps.indexOf(order.productionStage);
+    return idx < 0 ? 0 : (idx + 1) / steps.length;
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════
+   DEFAULT DATA — seeds a brand-new database
+═══════════════════════════════════════════════════════════ */
+const DEFAULTS = {
+  stages: [
+    {name:'Pending',                 path:'shared', order:0 },
+    {name:'On Hold',                 path:'shared', order:99},
+    {name:'Sample Weaving Started',  path:'sample', order:10},
+    {name:'Ready to Ship (Sample)',  path:'sample', order:11},
+    {name:'Awaiting Approval',       path:'sample', order:12},
+    {name:'Sample Approved',         path:'sample', order:13},
+    {name:'Rug Weaving Started',     path:'direct', order:20},
+    {name:'Washing & Blocking',      path:'direct', order:21},
+    {name:'Inspection & Packing',    path:'direct', order:22},
+    {name:'Shipped',                 path:'direct', order:23},
+    {name:'Completed',               path:'direct', order:24},
+  ],
+  categories: ['LIVING ROOM','BEDROOM','DINING ROOM','OFFICE','KIDS ROOM','HALLWAY'],
+  fields: [
+    {key:'orderNumber',         label:'Order #',              core:true,  visible:true,  type:'text'},
+    {key:'customerName',        label:'Customer Name',        core:true,  visible:true,  type:'text'},
+    {key:'carpetSize',          label:'Carpet Size',          core:false, visible:true,  type:'text'},
+    {key:'category',            label:'Category',             core:false, visible:true,  type:'select-category'},
+    {key:'material',            label:'Material',             core:true,  visible:true,  type:'select-material'},
+    {key:'newOrRepeat',         label:'New / Repeat',         core:false, visible:true,  type:'select', options:['New','Repeat']},
+    {key:'productionStage',     label:'Production Stage',     core:true,  visible:true,  type:'select-stage'},
+    {key:'materialStatus',      label:'Material Status',      core:false, visible:true,  type:'select', options:['Available','Low','Out of Stock']},
+    {key:'expectedCompletion',  label:'Expected Completion',  core:true,  visible:true,  type:'date'},
+    {key:'sampleCompletionDate',label:'Sample Completion Date',core:false,visible:false, type:'date'},
+    {key:'trackingNumber',      label:'Tracking Number',      core:false, visible:true,  type:'text'},
+    {key:'holdReason',          label:'Hold Reason',          core:false, visible:false, type:'text'},
+    {key:'holdExpectedDate',    label:'Hold Expected Date',   core:false, visible:false, type:'date'},
+    {key:'notes',               label:'Notes',                core:false, visible:true,  type:'textarea'},
+  ],
+  materials: [
+    {name:'Wool',   qty:500,unit:'kg'},
+    {name:'Silk',   qty:120,unit:'kg'},
+    {name:'Cotton', qty:300,unit:'kg'},
+    {name:'Viscose',qty:80, unit:'kg'},
+    {name:'Bamboo', qty:0,  unit:'kg'},
+    {name:'Jute',   qty:200,unit:'meters'},
+  ],
+  colors: {'on-schedule':'#22c55e','on-hold':'#f59e0b','delayed':'#ef4444'},
+  /* Orders sitting in one stage longer than this many days blink red.
+     Admin can change this in Settings → Colors. */
+  stuckDays: 30,
+  sampleOrders: [
+    {orderNumber:'VL-0001',customerName:'The Grand Hotel',    carpetSize:'4x6m',category:'LIVING ROOM',material:'Wool',   newOrRepeat:'Repeat',workflowPath:'sample',productionStage:'Awaiting Approval',  materialStatus:'Available',    expectedCompletion:fd(14),sampleCompletionDate:fd(-2),sampleImageUrl:'',notes:'Cream base, Persian border',holdReason:'',holdExpectedDate:'',trackingNumber:'',productImageUrl:''},
+    {orderNumber:'VL-0002',customerName:'Sarah Mitchell',     carpetSize:'2x3m',category:'BEDROOM',    material:'Silk',   newOrRepeat:'New',   workflowPath:'direct',productionStage:'Washing & Blocking', materialStatus:'Available',    expectedCompletion:fd(10),sampleCompletionDate:'',   sampleImageUrl:'',notes:'Blush pink gradient',  holdReason:'',holdExpectedDate:'',trackingNumber:'',productImageUrl:''},
+    {orderNumber:'VL-0003',customerName:'Prestige Offices LLC',carpetSize:'6x8m',category:'OFFICE',   material:'Bamboo', newOrRepeat:'New',   workflowPath:'direct',productionStage:'On Hold',            materialStatus:'Out of Stock', expectedCompletion:fd(21),sampleCompletionDate:'',   sampleImageUrl:'',notes:'Awaiting Bamboo stock', holdReason:'Bamboo out of stock',holdExpectedDate:fd(10),trackingNumber:'',productImageUrl:''},
+    {orderNumber:'VL-0004',customerName:'James Harrington',   carpetSize:'3x5m',category:'DINING ROOM',material:'Cotton',newOrRepeat:'Repeat',workflowPath:'direct',productionStage:'Shipped',            materialStatus:'Available',    expectedCompletion:fd(-2),sampleCompletionDate:'',   sampleImageUrl:'',notes:'Rush order — check tracking',holdReason:'',holdExpectedDate:'',trackingNumber:'DHL-9948821',productImageUrl:''},
+    {orderNumber:'VL-0005',customerName:'Little Stars Nursery',carpetSize:'2x2m',category:'KIDS ROOM',material:'Cotton',newOrRepeat:'New',   workflowPath:'sample',productionStage:'Sample Weaving Started',materialStatus:'Available',  expectedCompletion:fd(28),sampleCompletionDate:'',   sampleImageUrl:'',notes:'Rainbow colours',      holdReason:'',holdExpectedDate:'',trackingNumber:'',productImageUrl:''},
+  ]
+};
+function fd(d){const x=new Date();x.setDate(x.getDate()+d);return x.toISOString().split('T')[0];}
+
+/* ═══════════════════════════════════════════════════════════
+   AUTH MODULE
+═══════════════════════════════════════════════════════════ */
+const Auth=(()=>{
+  let _a=null;
+  function init(fa){
+    _a=fa;
+    _a.onAuthStateChanged(u=>{if(u)App.onUserReady(u);else App.showLoginScreen();});
+  }
+  function signInEmail(){
+    const em=document.getElementById('login-email').value.trim();
+    const pw=document.getElementById('login-password').value;
+    if(!em||!pw){showErr('Enter your email and password.');return;}
+    clearErr();
+    _a.signInWithEmailAndPassword(em,pw).catch(e=>showErr(fe(e)));
+  }
+  function registerEmail(){
+    const em=document.getElementById('login-email').value.trim();
+    const pw=document.getElementById('login-password').value;
+    if(!em||!pw){showErr('Enter email and password (min 6 chars).');return;}
+    if(pw.length<6){showErr('Password must be at least 6 characters.');return;}
+    clearErr();
+    _a.createUserWithEmailAndPassword(em,pw).then(c=>{
+      App.ensureUserRole(c.user.uid,'staff');
+      App.recordUserEmail(c.user.uid,em);
+    }).catch(e=>showErr(fe(e)));
+  }
+  function signInWithGoogle(){
+    if(!_a)return;
+    const p=new firebase.auth.GoogleAuthProvider();
+    _a.signInWithPopup(p).then(r=>{
+      App.ensureUserRole(r.user.uid,'staff');
+      App.recordUserEmail(r.user.uid,r.user.email||'');
+    }).catch(e=>{
+      if(e.code==='auth/operation-not-allowed'){
+        document.getElementById('google-btn').style.display='none';
+        document.querySelector('.login-divider').style.display='none';
+      }else showErr(fe(e));
+    });
+  }
+  function signOut(){if(_a)_a.signOut().then(()=>App.showLoginScreen());else App.showLoginScreen();}
+  function toggleReset(){document.getElementById('reset-panel').classList.toggle('show');}
+  function sendReset(){
+    const em=document.getElementById('login-email').value.trim();
+    if(!em){showErr('Enter your email first.');return;}
+    _a.sendPasswordResetEmail(em).then(()=>{clearErr();App.toast('Reset email sent','success');}).catch(e=>showErr(fe(e)));
+  }
+  function showErr(m){const el=document.getElementById('login-error');el.textContent=m;el.classList.add('show');}
+  function clearErr(){document.getElementById('login-error').classList.remove('show');}
+  function fe(e){
+    const m={'auth/user-not-found':'No account with that email.','auth/wrong-password':'Incorrect password.','auth/invalid-email':'Invalid email.','auth/email-already-in-use':'Email already registered.','auth/weak-password':'Password must be at least 6 characters.','auth/too-many-requests':'Too many attempts — try later.','auth/network-request-failed':'Network error.'};
+    return m[e.code]||e.message;
+  }
+  return{init,signInEmail,registerEmail,signInWithGoogle,signOut,toggleReset,sendReset};
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   APP MODULE
+═══════════════════════════════════════════════════════════ */
+const App=(()=>{
+  let db=null,demoMode=false,store={},currentUser=null,currentRole=null;
+  let dragState={},colMenuTarget=null,editingOrderId=null,newOrderPath='direct';
+
+  /* ── Firebase / Demo init ── */
+  function connectFirebase(){
+    const raw=document.getElementById('fb-config-input').value.trim();
+    let cfg;try{cfg=JSON.parse(raw);}catch(e){toast('Invalid JSON config','error');return;}
+    if(!cfg.databaseURL){toast('databaseURL is required','error');return;}
+    localStorage.setItem('vl_fb_config',raw);
+    initFirebase(cfg);
+  }
+  function initFirebase(cfg){
+    try{
+      firebase.apps.length?firebase.app():firebase.initializeApp(cfg);
+      db=firebase.database();
+      Auth.init(firebase.auth());
+      hideEl('fb-config-screen');
+    }catch(e){toast('Firebase error: '+e.message,'error');}
+  }
+  function demoMode_(){
+    demoMode=true;
+    currentUser={uid:'demo',email:'demo@vandenloom.com'};
+    currentRole='admin';
+    localStorage.setItem('vl_demo','1');
+    hideEl('fb-config-screen');hideEl('login-screen');
+    loadFromLocalStorage();
+  }
+
+  /* ── Auth bridge ── */
+  function onUserReady(user){
+    currentUser=user;showLoading();
+    db.ref('/roles/'+user.uid).once('value',snap=>{
+      const role=snap.val();
+      if(!role){currentRole='staff';db.ref('/roles/'+user.uid).set('staff');recordUserEmail(user.uid,user.email||'');}
+      else currentRole=role;
+      applyRoleUI();hideEl('login-screen');loadFromFirebase();
+    });
+  }
+  function showLoginScreen(){
+    currentUser=null;currentRole=null;
+    hideLoading();showEl('login-screen');
+    document.getElementById('board').innerHTML='';
+  }
+  function applyRoleUI(){
+    const isAdmin=currentRole==='admin'||demoMode;
+    const isVendor=currentRole==='vendor';
+    const isStaff=currentRole==='staff';
+    const user=currentUser;
+
+    /* Settings button: admin only */
+    document.getElementById('settings-btn').classList.toggle('hidden',!isAdmin);
+
+    /* Staff notice: shown for staff only (not vendor — vendor gets their own notice) */
+    document.getElementById('staff-notice').classList.toggle('hidden',!isStaff);
+
+    /* Vendor notice: tells vendor their view is scoped to their own orders */
+    const vn=document.getElementById('vendor-notice');
+    if(vn)vn.classList.toggle('hidden',!isVendor);
+
+    /* Vendor filter dropdown: admin only */
+    const vf=document.getElementById('f-vendor');
+    if(vf)vf.classList.toggle('hidden',!isAdmin);
+
+    /* New Order button: visible to everyone (admin, vendor, staff can all create orders) */
+    const noBtn=document.querySelector('.topbar-btn.accent');
+    if(noBtn)noBtn.classList.remove('hidden');
+
+    /* Staff notice — update text to reflect they CAN create orders but not access settings */
+    const sn=document.getElementById('staff-notice');
+    if(sn){sn.textContent='📋 Can create & edit orders — no settings access';}
+
+    /* Body role class drives CSS (card cursor, etc.) */
+    document.body.classList.toggle('role-admin',isAdmin);
+    document.body.classList.toggle('role-vendor',isVendor);
+    document.body.classList.toggle('role-staff',isStaff);
+
+    /* User badge */
+    const email=user?.email||'User';
+    document.getElementById('user-avatar').textContent=email.slice(0,2).toUpperCase();
+    document.getElementById('user-name-display').textContent=email.split('@')[0];
+    const pill=document.getElementById('user-role-pill');
+    const roleLabel=isAdmin?'Admin':isVendor?'Vendor':'Staff';
+    pill.textContent=roleLabel;
+    pill.className='role-pill '+(isAdmin?'admin':isVendor?'vendor':'staff');
+  }
+  function ensureUserRole(uid,def){
+    if(demoMode)return;
+    db.ref('/roles/'+uid).once('value',s=>{if(!s.val())db.ref('/roles/'+uid).set(def);});
+  }
+  function recordUserEmail(uid,email){if(!demoMode)db.ref('/userEmails/'+uid).set(email||'');}
+
+  /* ── Data loading ──
+     IMPORTANT: We do NOT read from root '/' anymore.
+     Reading '/' requires a root .read rule, which (for security)
+     only admins have. Vendors and staff need to read individual
+     nodes (stages, categories, etc.) but not the whole tree.
+
+     So we attach a separate listener to each top-level node.
+     Each listener updates its slice of `store` and re-renders.
+     This also means the board updates incrementally as each
+     node loads, rather than waiting for one big read. */
+  let _loadedNodes={stages:false,categories:false,fields:false,materials:false,colors:false,stuckDays:false,orders:false};
+  function _checkAllLoaded(){
+    if(Object.values(_loadedNodes).every(Boolean)){renderAll();hideLoading();}
+  }
+  function loadFromFirebase(){
+    const isAdmin=currentRole==='admin';
+
+    db.ref('/stages').on('value',snap=>{
+      const val=snap.val();
+      if(!val||!val.length){
+        /* No stages yet → first run → seed defaults (admin only; vendors/staff just wait) */
+        if(isAdmin)seedDefaults();
+        return;
+      }
+      store.stages=val;_loadedNodes.stages=true;
+      _checkAllLoaded();if(_loadedNodes.stages&&store.orders!==undefined)renderAll();
+    },err=>_dbErr('stages',err));
+
+    db.ref('/categories').on('value',snap=>{
+      store.categories=snap.val()||DEFAULTS.categories.slice();
+      _loadedNodes.categories=true;_checkAllLoaded();if(store.stages)renderAll();
+    },err=>_dbErr('categories',err));
+
+    db.ref('/fields').on('value',snap=>{
+      store.fields=snap.val()||JSON.parse(JSON.stringify(DEFAULTS.fields));
+      _loadedNodes.fields=true;_checkAllLoaded();if(store.stages)renderAll();
+    },err=>_dbErr('fields',err));
+
+    db.ref('/materials').on('value',snap=>{
+      store.materials=snap.val()||{};
+      _loadedNodes.materials=true;_checkAllLoaded();if(store.stages)renderAll();
+    },err=>_dbErr('materials',err));
+
+    db.ref('/colors').on('value',snap=>{
+      store.colors=snap.val()||Object.assign({},DEFAULTS.colors);
+      _loadedNodes.colors=true;_checkAllLoaded();if(store.stages)renderAll();
+    },err=>_dbErr('colors',err));
+
+    db.ref('/stuckDays').on('value',snap=>{
+      const v=snap.val();
+      store.stuckDays=(v!=null)?v:DEFAULTS.stuckDays;
+      _loadedNodes.stuckDays=true;_checkAllLoaded();if(store.stages)renderAll();
+    },err=>_dbErr('stuckDays',err));
+
+    /* Orders: admin/staff read the whole /orders node (allowed by rules).
+       Vendors query only orders where vendorUid === their uid, using
+       an indexed query (requires .indexOn:["vendorUid"] in rules). */
+    if(isAdmin||currentRole==='staff'){
+      db.ref('/orders').on('value',snap=>{
+        store.orders=snap.val()||{};
+        _loadedNodes.orders=true;_checkAllLoaded();if(store.stages)renderAll();
+      },err=>_dbErr('orders',err));
+    }else if(currentRole==='vendor'){
+      db.ref('/orders').orderByChild('vendorUid').equalTo(currentUser.uid).on('value',snap=>{
+        store.orders=snap.val()||{};
+        _loadedNodes.orders=true;_checkAllLoaded();if(store.stages)renderAll();
+      },err=>_dbErr('orders',err));
+    }
+  }
+  function _dbErr(node,err){
+    toast('Firebase error ('+node+'): '+err.message,'error');
+    hideLoading();
+  }
+  function loadFromLocalStorage(){
+    showLoading();
+    const raw=localStorage.getItem('vl_store');
+    const data=raw?JSON.parse(raw):{};
+    if(!data.stages||!data.stages.length)seedDefaultsDemo(data);
+    else applyStoreData(data);
+    applyRoleUI();renderAll();hideLoading();
+  }
+  function applyStoreData(data){
+    store.stages    =data.stages    ||DEFAULTS.stages.slice();
+    store.categories=data.categories||DEFAULTS.categories.slice();
+    store.fields    =data.fields    ||JSON.parse(JSON.stringify(DEFAULTS.fields));
+    store.materials =data.materials ||{};
+    store.colors    =data.colors    ||Object.assign({},DEFAULTS.colors);
+    store.stuckDays =data.stuckDays !=null?data.stuckDays:DEFAULTS.stuckDays;
+
+    /* ORDER SCOPING:
+       - admin/staff: see all orders (store.orders = full map)
+       - vendor: only orders where vendorUid === their uid
+       This is a client-side filter applied on every load.
+       For true server-side enforcement use Firebase Security Rules (see docs at bottom). */
+    const allOrders=data.orders||{};
+    if(currentRole==='vendor'&&currentUser&&!demoMode){
+      const uid=currentUser.uid;
+      store.orders={};
+      Object.entries(allOrders).forEach(([k,o])=>{
+        if(o.vendorUid===uid)store.orders[k]=o;
+      });
+    }else{
+      store.orders=allOrders;
+    }
+  }
+  async function seedDefaults(){
+    const now=new Date().toISOString(),u={};
+    u['/stages']=DEFAULTS.stages;u['/categories']=DEFAULTS.categories;
+    u['/fields']=DEFAULTS.fields;u['/colors']=DEFAULTS.colors;u['/stuckDays']=DEFAULTS.stuckDays;
+    const mats={};
+    DEFAULTS.materials.forEach(m=>{mats[sk(m.name)]=Object.assign({updatedAt:now},m);});
+    u['/materials']=mats;
+    DEFAULTS.sampleOrders.forEach(o=>{
+      const k=db.ref('/orders').push().key;
+      u['/orders/'+k]=Object.assign({},o,{id:k,createdAt:now,updatedAt:now});
+    });
+    await db.ref('/').update(u);
+  }
+  function seedDefaultsDemo(data){
+    const now=new Date().toISOString();
+    data.stages=DEFAULTS.stages.slice();data.categories=DEFAULTS.categories.slice();
+    data.fields=JSON.parse(JSON.stringify(DEFAULTS.fields));
+    data.colors=Object.assign({},DEFAULTS.colors);data.stuckDays=DEFAULTS.stuckDays;data.materials={};
+    DEFAULTS.materials.forEach(m=>{data.materials[sk(m.name)]=Object.assign({updatedAt:now},m);});
+    data.orders={};
+    DEFAULTS.sampleOrders.forEach(o=>{
+      const k='order_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+      data.orders[k]=Object.assign({},o,{id:k,createdAt:now,updatedAt:now});
+    });
+    applyStoreData(data);saveDemo();
+  }
+  function saveDemo(){if(!demoMode)return;localStorage.setItem('vl_store',JSON.stringify(store));}
+
+  /* ── DB helpers ── */
+  function dbSet(p,v){if(demoMode){_sp(store,p,v);saveDemo();return Promise.resolve();}return db.ref(p).set(v);}
+  function dbUpdate(p,u){
+    if(demoMode){const b=_gp(store,p)||{};Object.assign(b,u);_sp(store,p,b);saveDemo();renderAll();return Promise.resolve();}
+    return db.ref(p).update(u);
+  }
+  function dbRemove(p){if(demoMode){_dp(store,p);saveDemo();renderAll();return Promise.resolve();}return db.ref(p).remove();}
+  function dbPushKey(){if(demoMode)return'order_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);return db.ref('/orders').push().key;}
+  function _sp(o,p,v){const a=p.replace(/^\//,'').split('/');let c=o;for(let i=0;i<a.length-1;i++){if(!c[a[i]])c[a[i]]={};c=c[a[i]];}c[a[a.length-1]]=v;}
+  function _gp(o,p){const a=p.replace(/^\//,'').split('/');let c=o;for(const k of a){if(c==null)return null;c=c[k];}return c;}
+  function _dp(o,p){const a=p.replace(/^\//,'').split('/');let c=o;for(let i=0;i<a.length-1;i++){if(!c[a[i]])return;c=c[a[i]];}delete c[a[a.length-1]];}
+
+  /* requireAdmin — settings-level actions (stages, materials, colors) */
+  function requireAdmin(action){
+    if(currentRole!=='admin'&&!demoMode){toast('Only admins can '+action,'error');return false;}
+    return true;
+  }
+  /* requireOrderWrite — who can create/edit orders:
+     admin  → all orders
+     vendor → only their own orders
+     staff  → can create new orders + edit any order (but cannot delete — enforced in openEditOrder)
+  */
+  function requireOrderWrite(order){
+    if(demoMode)return true;
+    if(currentRole==='admin')return true;
+    if(currentRole==='staff')return true;   /* staff can create & edit, delete blocked separately */
+    if(currentRole==='vendor'){
+      if(!order)return true;               /* new order — always allowed */
+      if(order.vendorUid===currentUser?.uid)return true;
+      toast('You can only edit your own orders','error');return false;
+    }
+    toast('You do not have permission to do that','error');return false;
+  }
+
+  /* ══════════════════════════════════════════════
+     ACTIVITY LOG
+     Stores tiny text entries at /activity/{orderId}/{pushKey}.
+     Each entry ≈ 150 bytes → millions fit in the 1GB free DB tier.
+     Logged actions: created, edited, moved, image added.
+     ══════════════════════════════════════════════ */
+  function logActivity(orderId,action){
+    const entry={
+      action,                                            /* e.g. "moved to Shipped" */
+      by: currentUser?.email?.split('@')[0]||'demo',     /* who did it */
+      at: new Date().toISOString(),                      /* when */
+    };
+    if(demoMode){
+      if(!store.activity)store.activity={};
+      if(!store.activity[orderId])store.activity[orderId]={};
+      store.activity[orderId]['a_'+Date.now()+'_'+Math.random().toString(36).slice(2,5)]=entry;
+      saveDemo();
+      return;
+    }
+    db.ref('/activity/'+orderId).push(entry);
+  }
+
+  /* Fetch & render activity entries for an order into a container element */
+  function renderActivityLog(orderId,container){
+    const draw=(entries)=>{
+      container.innerHTML='';
+      const list=Object.values(entries||{}).sort((a,b)=>b.at.localeCompare(a.at)); /* newest first */
+      if(!list.length){container.innerHTML='<div style="font-size:.72rem;color:var(--text-muted)">No activity yet</div>';return;}
+      list.slice(0,30).forEach(e=>{  /* cap display at 30 entries */
+        const icon=e.action.startsWith('moved')?'➡️':e.action.startsWith('created')?'✨':e.action.startsWith('image')?'📷':'✏️';
+        const row=document.createElement('div');row.className='activity-entry';
+        row.innerHTML=`<span class="ae-icon">${icon}</span>
+          <span class="ae-text"><b>${esc(e.by)}</b> ${esc(e.action)}</span>
+          <span class="ae-time">${fmtDate(e.at)}</span>`;
+        container.appendChild(row);
+      });
+    };
+    if(demoMode){draw((store.activity||{})[orderId]);return;}
+    db.ref('/activity/'+orderId).once('value',snap=>draw(snap.val()));
+  }
+
+  /* ── Render engine ── */
+  function renderAll(){renderBoard();populateFilterSelects();updateColorPickers();applyFilters();updateStats();}
+
+  function renderBoard(){
+    const board=document.getElementById('board');
+    const isAdmin=currentRole==='admin'||demoMode;
+    board.innerHTML='';
+    const stages=store.stages||DEFAULTS.stages;
+    const byPath={shared:[],sample:[],direct:[]};
+    stages.forEach(s=>{(byPath[s.path]||byPath.shared).push(s);});
+    const pathDefs=[
+      {key:'shared',label:'⚙ Shared Stages',      cls:'shared'},
+      {key:'sample',label:'🪡 Path A — Sample',    cls:'sample'},
+      {key:'direct',label:'🧵 Path B — Production',cls:'direct'},
+    ];
+    pathDefs.forEach(pd=>{
+      const grp=byPath[pd.key];if(!grp.length)return;
+      const wrapper=document.createElement('div');wrapper.className='path-group';
+      const hdr=document.createElement('div');
+      hdr.className=`path-group-header ${pd.cls}`;hdr.textContent=pd.label;
+      wrapper.appendChild(hdr);
+      const cols=document.createElement('div');cols.className='path-cols';
+      grp.forEach(stage=>cols.appendChild(createColumnEl(stage,isAdmin)));
+      wrapper.appendChild(cols);board.appendChild(wrapper);
+    });
+    if(isAdmin){
+      const btn=document.createElement('button');btn.id='add-col-btn';btn.innerHTML='＋ Add Stage';
+      btn.onclick=()=>{const n=prompt('New stage name:');if(n&&n.trim())addStageByName(n.trim(),'shared');};
+      board.appendChild(btn);
+    }
+  }
+
+  function createColumnEl(stage,isAdmin){
+    const sName=typeof stage==='string'?stage:stage.name;
+    const sPath=typeof stage==='string'?WORKFLOW.pathOf(sName):(stage.path||'shared');
+    const col=document.createElement('div');
+    col.className='kanban-col';col.dataset.stage=sName;col.dataset.path=sPath;
+    col.innerHTML=`
+      <div class="col-header${isAdmin?' draggable':''}">
+        <div class="col-dot ${sPath}"></div>
+        <span class="col-name">${esc(sName)}</span>
+        <span class="col-count">0</span>
+        ${isAdmin?`<button class="col-menu-btn" title="Options">&#8943;</button>`:''}
+      </div>
+      <div class="col-cards" data-stage="${esc(sName)}"></div>
+      ${isAdmin?`<button class="col-add-btn">&#xFF0B; Add to ${esc(sName)}</button>`:''}
+    `;
+    if(isAdmin){
+      const hdr=col.querySelector('.col-header');
+      hdr.draggable=true;
+      hdr.addEventListener('dragstart',e=>{dragState.colStage=sName;e.dataTransfer.effectAllowed='move';});
+      hdr.addEventListener('dragend',()=>{dragState.colStage=null;clearDragOver();});
+      col.querySelector('.col-menu-btn').addEventListener('click',e=>{e.stopPropagation();showColMenu(sName,e);});
+      col.querySelector('.col-add-btn').addEventListener('click',()=>openNewOrder(sName));
+    }
+    col.addEventListener('dragover',e=>{if(dragState.colStage||dragState.cardId){e.preventDefault();col.classList.add('drag-over');}});
+    col.addEventListener('dragleave',()=>col.classList.remove('drag-over'));
+    col.addEventListener('drop',e=>{
+      e.preventDefault();col.classList.remove('drag-over');
+      if(dragState.cardId)moveCardToStage(dragState.cardId,sName);
+    });
+    return col;
+  }
+
+  function renderCards(){
+    const orders=store.orders||{};
+    const filters=getActiveFilters();
+    const search=(document.getElementById('search-input').value||'').toLowerCase();
+    document.querySelectorAll('.col-cards').forEach(c=>c.innerHTML='');
+    document.querySelectorAll('.col-count').forEach(c=>c.textContent='0');
+    Object.values(orders).forEach(order=>{
+      if(!passesFilter(order,filters,search))return;
+      const slot=document.querySelector(`.col-cards[data-stage="${CSS.escape(order.productionStage)}"]`);
+      if(!slot)return;
+      slot.appendChild(createCardEl(order));
+      const cnt=slot.closest('.kanban-col')?.querySelector('.col-count');
+      if(cnt)cnt.textContent=parseInt(cnt.textContent||0)+1;
+    });
+    document.querySelectorAll('.col-cards').forEach(c=>{
+      if(!c.children.length)c.innerHTML='<div class="empty-col">No orders here</div>';
+    });
+  }
+
+  function createCardEl(order){
+    const card=document.createElement('div');
+    card.className='order-card';card.dataset.id=order.id;
+    const status=getOrderStatus(order);
+    const statusColor=(store.colors||DEFAULTS.colors)[status]||'#6b7280';
+    const sLabels={'on-schedule':'On Schedule','on-hold':'On Hold','delayed':'Delayed'};
+    const isOverdue=status==='delayed';
+    const path=order.workflowPath||'direct';
+    const pathLabel=path==='sample'?'🪡 Sample Approval':'🧵 Direct Production';
+    const progress=WORKFLOW.progress(order);
+    const steps=path==='sample'?WORKFLOW.sampleSteps:WORKFLOW.directSteps;
+    const stepIdx=steps.indexOf(order.productionStage);
+    const stepLabel=steps.length?`Step ${Math.max(stepIdx+1,0)}/${steps.length}`:'';
+    const exp=order.expectedCompletion
+      ?new Date(order.expectedCompletion).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})
+      :'—';
+
+    /* Image logic */
+    const showSampleImg =path==='sample'&&['Ready to Ship (Sample)','Awaiting Approval','Sample Approved'].includes(order.productionStage);
+    const showProductImg=path==='direct'&&['Inspection & Packing','Shipped','Completed'].includes(order.productionStage);
+    const imgUrl=path==='sample'?(order.sampleImageUrl||''):(order.productImageUrl||'');
+    let imageHtml='';
+    if(showSampleImg||showProductImg){
+      if(imgUrl){
+        imageHtml=`<div class="card-image-area">
+          <img class="card-image-thumb" src="${esc(imgUrl)}" alt="image"
+            onerror="this.style.display='none'" onclick="App.openEditOrder('${esc(order.id)}')"/>
+        </div>`;
+      }else{
+        const phLabel=showSampleImg?'📷 Add sample image':'📸 Add product photo';
+        imageHtml=`<div class="card-image-area">
+          <div class="card-image-placeholder ${path}" onclick="App.openEditOrder('${esc(order.id)}')">
+            <span class="ph-icon">${showSampleImg?'🪡':'📦'}</span>
+            <span>${phLabel}</span>
+          </div>
+        </div>`;
+      }
+    }
+
+    /* Vendor tag — admin sees who owns each card */
+    const isAdmin=currentRole==='admin'||demoMode;
+    const vendorName=order.vendorEmail
+      ?(order.vendorEmail.split('@')[0])
+      :(order.vendorUid?'vendor':'—');
+    const vendorHtml=isAdmin&&order.vendorUid
+      ?`<div class="card-vendor-tag">🏷 ${esc(vendorName)}</div>`
+      :'';
+
+    /* Stuck detection — apply blinking class + flag */
+    const stuckInfo=getStuckInfo(order);
+    if(stuckInfo.stuck)card.classList.add('stuck');
+    const stuckHtml=stuckInfo.stuck
+      ?`<div class="stuck-flag">🔴 Stuck — ${esc(stuckInfo.reason)}</div>`
+      :'';
+
+    card.style.setProperty('--card-status-color',statusColor);
+    card.innerHTML=`
+      <div class="card-path-strip ${path}">${esc(pathLabel)}</div>
+      <div class="card-top">
+        <div>
+          <div class="card-order-num">${esc(order.orderNumber||'')}</div>
+          <div class="card-customer">${esc(order.customerName||'Unnamed')}</div>
+        </div>
+        <div class="card-status-badge" style="color:${statusColor};border:1px solid ${statusColor}30;background:${statusColor}18">${esc(sLabels[status]||'')}</div>
+      </div>
+      ${imageHtml}
+      <div class="card-meta">
+        ${order.carpetSize ?`<span class="card-chip">📐 ${esc(order.carpetSize)}</span>`:''}
+        ${order.material   ?`<span class="card-chip">🧶 ${esc(order.material)}</span>`:''}
+        ${order.category   ?`<span class="card-chip">${esc(order.category)}</span>`:''}
+        ${order.newOrRepeat?`<span class="card-chip">${esc(order.newOrRepeat)}</span>`:''}
+      </div>
+      ${vendorHtml}
+      ${stuckHtml}
+      ${order.expectedCompletion?`<div class="card-date ${isOverdue?'overdue':''}">${isOverdue?'⚠️':'📅'} ${exp}${isOverdue?' — Overdue':''}</div>`:''}
+      ${order.trackingNumber?`<div class="card-tracking">🚚 ${esc(order.trackingNumber)}</div>`:''}
+      ${progress>0?`<div class="card-progress">
+        <div class="card-progress-label"><span>${esc(stepLabel)}</span><span>${Math.round(progress*100)}%</span></div>
+        <div class="card-progress-bar">
+          <div class="card-progress-fill" style="width:${progress*100}%;background:${path==='sample'?'var(--path-sample)':'var(--path-direct)'}"></div>
+        </div>
+      </div>`:''}
+      ${order.notes?`<div class="card-note">💬 ${esc(order.notes)}</div>`:''}
+    `;
+    card.addEventListener('click',()=>openEditOrder(order.id));
+    /* Drag enabled for: admin (all cards), vendor (own cards), staff (all cards) */
+    const canDrag=(currentRole==='admin'||demoMode)
+      ||(currentRole==='vendor'&&order.vendorUid===currentUser?.uid)
+      ||(currentRole==='staff');
+    card.draggable=canDrag;
+    if(canDrag){
+      card.addEventListener('dragstart',e=>{dragState.cardId=order.id;card.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+      card.addEventListener('dragend',()=>{dragState.cardId=null;card.classList.remove('dragging');clearDragOver();});
+      setupTouchDrag(card,order.id);
+    }
+    return card;
+  }
+
+  function clearDragOver(){document.querySelectorAll('.kanban-col').forEach(c=>c.classList.remove('drag-over'));}
+
+  /* ── Status logic ── */
+  function getOrderStatus(order){
+    if(order.productionStage==='On Hold')return'on-hold';
+    if(order.materialStatus==='Out of Stock')return'on-hold';
+    if(order.holdReason?.trim())return'on-hold';
+    if(order.expectedCompletion){
+      const exp=new Date(order.expectedCompletion);exp.setHours(23,59,59,999);
+      if(exp<new Date()&&order.productionStage!=='Completed')return'delayed';
+    }
+    return'on-schedule';
+  }
+
+  /* STUCK DETECTION:
+     A card is "stuck" (blinks red) if it has NOT moved stage for longer than:
+       (a) its expected completion date has passed, OR
+       (b) the configurable stuck-days limit (default 30) since it entered the stage.
+     Completed orders never blink.
+     Returns {stuck:bool, days:number, reason:string}. */
+  function getStuckInfo(order){
+    if(order.productionStage==='Completed')return{stuck:false};
+    const now=new Date();
+    /* When did it enter the current stage? Fall back to updatedAt, then createdAt. */
+    const since=new Date(order.stageEnteredAt||order.updatedAt||order.createdAt||now);
+    const daysInStage=Math.floor((now-since)/86400000);
+    const limit=store.stuckDays!=null?store.stuckDays:30;
+    /* Past ready date and not completed */
+    if(order.expectedCompletion){
+      const exp=new Date(order.expectedCompletion);exp.setHours(23,59,59,999);
+      if(exp<now)return{stuck:true,days:daysInStage,reason:'past ready date'};
+    }
+    /* Stuck in same stage too long */
+    if(daysInStage>=limit)return{stuck:true,days:daysInStage,reason:`${daysInStage}d in stage`};
+    return{stuck:false,days:daysInStage};
+  }
+
+  /* ── Filters ── */
+  function populateFilterSelects(){
+    const sf=document.getElementById('f-stage'),sv=sf.value;
+    sf.innerHTML='<option value="">All Stages</option>';
+    (store.stages||[]).forEach(s=>{const o=document.createElement('option');o.value=s.name;o.textContent=s.name;if(s.name===sv)o.selected=true;sf.appendChild(o);});
+    const cf=document.getElementById('f-category'),cv=cf.value;
+    cf.innerHTML='<option value="">All Categories</option>';
+    (store.categories||[]).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;if(c===cv)o.selected=true;cf.appendChild(o);});
+    const mf=document.getElementById('f-material'),mv=mf.value;
+    mf.innerHTML='<option value="">All Materials</option>';
+    Object.values(store.materials||{}).forEach(m=>{const o=document.createElement('option');o.value=m.name;o.textContent=m.name;if(m.name===mv)o.selected=true;mf.appendChild(o);});
+
+    /* Vendor filter — admin only: build from unique vendorUid+vendorEmail combos in orders */
+    const vf=document.getElementById('f-vendor');
+    if(vf&&(currentRole==='admin'||demoMode)){
+      const vv=vf.value;
+      vf.innerHTML='<option value="">All Vendors</option>';
+      const seen=new Set();
+      Object.values(store.orders||{}).forEach(o=>{
+        if(!o.vendorUid||seen.has(o.vendorUid))return;
+        seen.add(o.vendorUid);
+        const label=o.vendorEmail?o.vendorEmail.split('@')[0]:o.vendorUid.slice(0,8);
+        const opt=document.createElement('option');opt.value=o.vendorUid;opt.textContent=label;
+        if(o.vendorUid===vv)opt.selected=true;
+        vf.appendChild(opt);
+      });
+    }
+  }
+  function getActiveFilters(){
+    return{
+      path:document.getElementById('f-path').value,
+      stage:document.getElementById('f-stage').value,
+      status:document.getElementById('f-status').value,
+      category:document.getElementById('f-category').value,
+      material:document.getElementById('f-material').value,
+      custType:document.getElementById('f-custtype').value,
+      vendor:document.getElementById('f-vendor')?.value||'',
+    };
+  }
+  function passesFilter(order,f,search){
+    if(f.path    &&(order.workflowPath||'direct')!==f.path)return false;
+    if(f.stage   &&order.productionStage!==f.stage)return false;
+    if(f.status  &&getOrderStatus(order)!==f.status)return false;
+    if(f.category&&order.category!==f.category)return false;
+    if(f.material&&order.material!==f.material)return false;
+    if(f.custType&&order.newOrRepeat!==f.custType)return false;
+    if(f.vendor  &&order.vendorUid!==f.vendor)return false;
+    if(search){const h=((order.orderNumber||'')+(order.customerName||'')).toLowerCase();if(!h.includes(search))return false;}
+    return true;
+  }
+  function applyFilters(){renderCards();}
+  function onSearch(){renderCards();}
+  /* Stat chip click → set status filter and refresh */
+  function statFilter(status){
+    document.getElementById('f-status').value=status;
+    renderCards();
+  }
+  /* Recompute the stats bar from the currently visible scope (vendor sees own stats only) */
+  function updateStats(){
+    const orders=Object.values(store.orders||{});
+    let ok=0,hold=0,late=0;
+    orders.forEach(o=>{
+      const s=getOrderStatus(o);
+      if(s==='on-schedule')ok++;else if(s==='on-hold')hold++;else late++;
+    });
+    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+    set('stat-total',orders.length);set('stat-ok',ok);set('stat-hold',hold);set('stat-late',late);
+  }
+  function clearFilters(){
+    ['f-path','f-stage','f-status','f-category','f-material','f-custtype','f-vendor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('search-input').value='';renderCards();
+  }
+
+  /* ── Order form ── */
+  /* Auto-generate the next order number: scans existing VL-XXXX numbers,
+     returns highest+1. Vendors get a prefix from their email (e.g. RAJ-0001)
+     so each vendor's sequence is independent and identifiable. */
+  function nextOrderNumber(){
+    const isAdmin=currentRole==='admin'||demoMode;
+    let prefix='VL';
+    if(!isAdmin&&currentRole==='vendor'&&currentUser?.email){
+      prefix=currentUser.email.split('@')[0].slice(0,3).toUpperCase();
+    }
+    let max=0;
+    Object.values(store.orders||{}).forEach(o=>{
+      const m=(o.orderNumber||'').match(new RegExp('^'+prefix+'-(\\d+)$'));
+      if(m)max=Math.max(max,parseInt(m[1]));
+    });
+    return prefix+'-'+String(max+1).padStart(4,'0');
+  }
+
+  function openNewOrder(defaultStage){
+    if(!requireOrderWrite(null))return;
+    editingOrderId=null;newOrderPath='direct';
+    document.getElementById('order-modal-title').textContent='New Order';
+    document.getElementById('delete-order-btn').style.display='none';
+    document.getElementById('save-order-btn').style.display='';
+    renderOrderForm({
+      workflowPath:'direct',
+      productionStage:defaultStage||'Pending',
+      newOrRepeat:'New',
+      orderNumber:nextOrderNumber()   /* pre-filled, still editable */
+    });
+    openModal('order-overlay');
+  }
+  function openEditOrder(orderId){
+    const order=(store.orders||{})[orderId];if(!order)return;
+    editingOrderId=orderId;newOrderPath=order.workflowPath||'direct';
+    const isAdmin=currentRole==='admin'||demoMode;
+    const isOwner=currentRole==='vendor'&&order.vendorUid===currentUser?.uid;
+    const isStaff=currentRole==='staff';
+    const canEdit=isAdmin||isOwner||isStaff;  /* staff can edit any order */
+    if(canEdit){
+      document.getElementById('order-modal-title').textContent='Edit — '+order.orderNumber;
+      /* Delete button: admin only — staff and vendors cannot delete */
+      document.getElementById('delete-order-btn').style.display=isAdmin?'':'none';
+      document.getElementById('save-order-btn').style.display='';
+      renderOrderForm(order);
+    }else{
+      document.getElementById('order-modal-title').textContent=order.orderNumber;
+      document.getElementById('delete-order-btn').style.display='none';
+      document.getElementById('save-order-btn').style.display='none';
+      renderOrderView(order);
+    }
+    openModal('order-overlay');
+  }
+
+  function renderOrderForm(order){
+    const body=document.getElementById('order-form-body');
+    const isNew=!editingOrderId;
+    const path=order.workflowPath||'direct';
+    body.innerHTML='';
+    /* Path chooser (new orders only) */
+    const pathSec=document.createElement('div');
+    if(isNew){
+      pathSec.innerHTML=`<div class="form-section-title">Choose Workflow Path</div>
+        <div class="path-chooser">
+          <div class="path-choice sample ${path==='sample'?'selected':''}" onclick="App._selectPath(this,'sample')">
+            <span class="pc-icon">🪡</span><span class="pc-label">Path A &mdash; Sample</span>
+            <span class="pc-desc">Customer approves sample first</span>
+          </div>
+          <div class="path-choice direct ${path==='direct'?'selected':''}" onclick="App._selectPath(this,'direct')">
+            <span class="pc-icon">🧵</span><span class="pc-label">Path B &mdash; Direct</span>
+            <span class="pc-desc">Straight to production</span>
+          </div>
+        </div>
+        <input type="hidden" id="form-workflow-path" value="${esc(path)}"/>`;
+    }else{
+      const badge=path==='sample'
+        ?`<span style="color:var(--path-sample);font-weight:700">🪡 Path A &mdash; Sample Approval</span>`
+        :`<span style="color:var(--path-direct);font-weight:700">🧵 Path B &mdash; Direct Production</span>`;
+      pathSec.innerHTML=`<div class="form-section-title">Workflow Path</div>
+        <div style="margin-bottom:12px;font-size:.82rem">${badge}</div>
+        <input type="hidden" id="form-workflow-path" value="${esc(path)}"/>`;
+      /* Timeline */
+      const tl=buildTimeline(order);if(tl)pathSec.appendChild(tl);
+    }
+    body.appendChild(pathSec);
+    /* Order fields */
+    const sec=document.createElement('div');sec.className='form-section-title';sec.textContent='Order Details';body.appendChild(sec);
+    const fields=(store.fields||DEFAULTS.fields).filter(f=>f.visible);
+    const main=fields.filter(f=>!['notes','holdReason','holdExpectedDate','sampleCompletionDate','trackingNumber'].includes(f.key));
+    const holdF=fields.filter(f=>['holdReason','holdExpectedDate'].includes(f.key));
+    const notesF=fields.find(f=>f.key==='notes');
+    const sampF=fields.find(f=>f.key==='sampleCompletionDate');
+    const trackF=fields.find(f=>f.key==='trackingNumber');
+    const row=document.createElement('div');row.className='form-row';
+    const a=document.createElement('div'),b=document.createElement('div');
+    main.forEach((f,i)=>(i%2===0?a:b).appendChild(mkField(f,order)));
+    row.appendChild(a);row.appendChild(b);body.appendChild(row);
+    /* Sample date */
+    if(path==='sample'&&sampF){
+      const s=document.createElement('div');s.className='form-section-title';s.textContent='Sample Details';body.appendChild(s);
+      body.appendChild(mkField(sampF,order));
+    }
+    /* Tracking */
+    if(trackF&&['Shipped','Completed'].includes(order.productionStage)){
+      const s=document.createElement('div');s.className='form-section-title';s.textContent='Shipping';body.appendChild(s);
+      body.appendChild(mkField(trackF,order));
+    }
+    /* Notes */
+    if(notesF){const s=document.createElement('div');s.className='form-section-title';s.textContent='Notes';body.appendChild(s);body.appendChild(mkField(notesF,order));}
+    /* Hold */
+    if(holdF.length){
+      const s=document.createElement('div');s.className='form-section-title';s.textContent='Hold Details';body.appendChild(s);
+      const hr=document.createElement('div');hr.className='form-row';holdF.forEach(f=>hr.appendChild(mkField(f,order)));body.appendChild(hr);
+    }
+    /* Image section */
+    const imgSec=document.createElement('div');imgSec.className='form-section-title';
+    imgSec.textContent=path==='sample'?'Sample Image':'Product Images';body.appendChild(imgSec);
+    body.appendChild(buildImageSection(order,path));
+    /* Activity log (only for existing orders) */
+    if(!isNew&&order.id){
+      const alSec=document.createElement('div');alSec.className='form-section-title';alSec.textContent='Activity Log';body.appendChild(alSec);
+      const alBox=document.createElement('div');alBox.className='activity-log';alBox.innerHTML='<div style="font-size:.72rem;color:var(--text-muted)">Loading…</div>';
+      body.appendChild(alBox);
+      renderActivityLog(order.id,alBox);
+    }
+    /* Timestamps */
+    if(order.createdAt){
+      const ts=document.createElement('div');ts.style.cssText='font-size:.67rem;color:var(--text-muted);margin-top:12px';
+      ts.innerHTML=`Created: ${fmtDate(order.createdAt)} &nbsp;|&nbsp; Updated: ${fmtDate(order.updatedAt)}`;
+      body.appendChild(ts);
+    }
+  }
+
+  function mkField(f,order){
+    const g=document.createElement('div');g.className='form-group';
+    const v=order[f.key]!==undefined?order[f.key]:'';
+    let inp;
+    if(f.type==='select-stage')   inp=`<select class="form-control" name="${f.key}">${(store.stages||DEFAULTS.stages).map(s=>`<option value="${esc(s.name)}" ${v===s.name?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`;
+    else if(f.type==='select-category')inp=`<select class="form-control" name="${f.key}"><option value="">&#8212; Select &#8212;</option>${(store.categories||[]).map(c=>`<option value="${esc(c)}" ${v===c?'selected':''}>${esc(c)}</option>`).join('')}</select>`;
+    else if(f.type==='select-material')inp=`<select class="form-control" name="${f.key}"><option value="">&#8212; Select &#8212;</option>${Object.values(store.materials||{}).map(m=>`<option value="${esc(m.name)}" ${v===m.name?'selected':''}>${esc(m.name)} (${m.qty} ${m.unit})</option>`).join('')}</select>`;
+    else if(f.type==='select')    inp=`<select class="form-control" name="${f.key}">${(f.options||[]).map(o=>`<option value="${esc(o)}" ${v===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+    else if(f.type==='textarea')  inp=`<textarea class="form-control" name="${f.key}" rows="3">${esc(v)}</textarea>`;
+    else if(f.type==='date')      inp=`<input type="date" class="form-control" name="${f.key}" value="${esc(v)}"/>`;
+    else                          inp=`<input type="text" class="form-control" name="${f.key}" value="${esc(v)}" placeholder="${esc(f.label)}"/>`;
+    g.innerHTML=`<label>${esc(f.label)}</label>${inp}`;return g;
+  }
+
+  /*
+    GOOGLE DRIVE LINK CONVERTER
+    Vendors paste any Google Drive share link; we convert it to Drive's
+    embeddable thumbnail URL so it renders in <img> tags.
+    Supported formats:
+      drive.google.com/file/d/FILE_ID/view...
+      drive.google.com/open?id=FILE_ID
+      drive.google.com/uc?id=FILE_ID
+    Output: drive.google.com/thumbnail?id=FILE_ID&sz=w800
+    NOTE: file must be shared as "Anyone with the link can view".
+  */
+  function convertDriveLink(url){
+    if(!url||!url.includes('drive.google.com'))return url;
+    let id=null;
+    let m=url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);     /* /file/d/ID/ */
+    if(m)id=m[1];
+    if(!id){m=url.match(/[?&]id=([a-zA-Z0-9_-]+)/);if(m)id=m[1];} /* ?id=ID */
+    if(!id)return url;
+    return `https://drive.google.com/thumbnail?id=${id}&sz=w800`;
+  }
+
+  function buildImageSection(order,path){
+    const wrap=document.createElement('div');
+    const field=path==='sample'?'sampleImageUrl':'productImageUrl';
+    const cur=order[field]||'';
+    wrap.innerHTML=`
+      <div class="img-upload-zone ${path}">
+        <div class="uz-icon">${path==='sample'?'🪡':'📦'}</div>
+        <div class="uz-label">${path==='sample'?'Sample image':'Product image'} — paste Google Drive link</div>
+        <div class="uz-sub">1. Upload photo to Google Drive &nbsp;2. Right-click → Share → "Anyone with link" &nbsp;3. Copy link &amp; paste below — converts automatically</div>
+      </div>
+      ${cur?`<img class="img-preview" id="img-preview" src="${esc(cur)}" style="display:block" alt="Preview" onerror="this.style.display='none'"/>`
+           :`<img class="img-preview" id="img-preview" src="" alt="Preview"/>`}
+      <div class="img-url-row">
+        <input type="text" class="form-control" id="img-url-input" name="${field}"
+          value="${esc(cur)}" placeholder="Paste Google Drive share link or any image URL"
+          oninput="App._previewImg(this)"/>
+        ${cur?`<button type="button" class="btn btn-danger btn-sm" onclick="App._clearImg('${field}')">Remove</button>`:''}
+      </div>`;
+    return wrap;
+  }
+
+  /* Convert Drive links live as the user types/pastes, then preview */
+  function _previewImg(inputEl){
+    /* Accept either the input element or a raw URL string */
+    const isEl=typeof inputEl==='object'&&inputEl!==null;
+    let url=isEl?inputEl.value:inputEl;
+    const converted=convertDriveLink(url);
+    if(isEl&&converted!==url){
+      inputEl.value=converted;   /* replace pasted Drive link with embeddable version */
+      url=converted;
+      toast('Google Drive link converted ✓','success');
+    }else{
+      url=converted;
+    }
+    const p=document.getElementById('img-preview');if(!p)return;
+    if(url){p.src=url;p.style.display='block';}else p.style.display='none';
+  }
+  function _clearImg(field){
+    const inp=document.querySelector(`[name="${field}"]`);if(inp)inp.value='';_previewImg('');
+  }
+  function _selectPath(el,path){
+    newOrderPath=path;
+    document.querySelectorAll('.path-choice').forEach(c=>c.classList.remove('selected'));
+    el.classList.add('selected');
+    const inp=document.getElementById('form-workflow-path');if(inp)inp.value=path;
+    /* Preserve current field values and re-render */
+    const vals={};
+    document.querySelectorAll('#order-form-body [name]').forEach(e=>{vals[e.name]=e.value;});
+    const fake=Object.assign({workflowPath:path,productionStage:path==='sample'?'Sample Weaving Started':'Rug Weaving Started'},vals);
+    renderOrderForm(fake);
+  }
+
+  function buildTimeline(order){
+    const path=order.workflowPath||'direct';
+    const steps=path==='sample'?WORKFLOW.sampleSteps:WORKFLOW.directSteps;
+    const curIdx=steps.indexOf(order.productionStage);
+    const wrap=document.createElement('div');
+    wrap.innerHTML=`<div class="form-section-title">Progress</div>`;
+    const tl=document.createElement('div');tl.className='order-timeline';
+    steps.forEach((step,i)=>{
+      const state=i<curIdx?'done':i===curIdx?'active':'future';
+      const dot=document.createElement('div');dot.className=`timeline-step ${state}`;
+      dot.innerHTML=`<div class="ts-dot">${i+1}</div><div class="ts-label">${esc(step)}</div>`;
+      tl.appendChild(dot);
+      if(i<steps.length-1){const c=document.createElement('div');c.className=`ts-connector ${i<curIdx?'done':''}`;tl.appendChild(c);}
+    });
+    wrap.appendChild(tl);
+    if(path==='sample'){
+      const bridge=document.createElement('div');
+      bridge.style.cssText='font-size:.66rem;color:var(--path-direct);margin:4px 0 8px;display:flex;align-items:center;gap:6px';
+      bridge.innerHTML='<span>&#8595; After Sample Approved &#8594; order enters Path B (Direct Production)</span>';
+      wrap.appendChild(bridge);
+    }
+    return wrap;
+  }
+
+  /* Staff read-only view */
+  function renderOrderView(order){
+    const body=document.getElementById('order-form-body');
+    const path=order.workflowPath||'direct';
+    body.innerHTML='';
+    const tl=buildTimeline(order);if(tl)body.appendChild(tl);
+    const imgUrl=path==='sample'?order.sampleImageUrl:order.productImageUrl;
+    if(imgUrl){
+      const is=document.createElement('div');
+      is.innerHTML=`<div class="form-section-title">${path==='sample'?'Sample Image':'Product Image'}</div>
+        <img src="${esc(imgUrl)}" style="width:100%;max-height:200px;object-fit:contain;border-radius:var(--radius-sm);margin-bottom:12px" onerror="this.style.display='none'" alt=""/>`;
+      body.appendChild(is);
+    }
+    const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px 16px';
+    (store.fields||DEFAULTS.fields).filter(f=>f.visible).forEach(f=>{
+      const val=order[f.key];if(!val)return;
+      const cell=document.createElement('div');
+      cell.innerHTML=`<div style="font-size:.67rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-bottom:3px">${esc(f.label)}</div>
+        <div style="font-size:.84rem;color:var(--text)">${esc(val)}</div>`;
+      grid.appendChild(cell);
+    });
+    body.appendChild(grid);
+    const status=getOrderStatus(order);const colors=store.colors||DEFAULTS.colors;
+    const sL={'on-schedule':'On Schedule','on-hold':'On Hold','delayed':'Delayed'};
+    const info=document.createElement('div');info.style.cssText='margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:.74rem;color:var(--text-muted)';
+    info.innerHTML=`<span style="color:${colors[status]};font-weight:700">&#9679; ${sL[status]||''}</span> &nbsp;|&nbsp; Created: ${fmtDate(order.createdAt)}`;
+    body.appendChild(info);
+  }
+
+  function saveOrder(){
+    const existingOrder=editingOrderId?(store.orders||{})[editingOrderId]:null;
+    if(!requireOrderWrite(existingOrder))return;
+    const inputs=document.getElementById('order-form-body').querySelectorAll('[name]');
+    const data={};inputs.forEach(el=>{data[el.name]=el.value;});
+    /* Safety net: convert any Drive share links that weren't converted live */
+    if(data.sampleImageUrl)data.sampleImageUrl=convertDriveLink(data.sampleImageUrl);
+    if(data.productImageUrl)data.productImageUrl=convertDriveLink(data.productImageUrl);
+    const pathInput=document.getElementById('form-workflow-path');
+    if(pathInput)data.workflowPath=pathInput.value||newOrderPath;
+    if(!data.orderNumber?.trim()){toast('Order number is required','error');return;}
+    if(!data.customerName?.trim()){toast('Customer name is required','error');return;}
+    /* Duplicate order-number check (skip the order being edited) */
+    const dup=Object.values(store.orders||{}).find(o=>
+      o.orderNumber===data.orderNumber.trim()&&o.id!==editingOrderId);
+    if(dup){toast('Order number '+data.orderNumber+' already exists','error');return;}
+    const now=new Date().toISOString();
+    const mat=data.material?(store.materials||{})[sk(data.material)]:null;
+    if(mat&&mat.qty<=0&&data.productionStage!=='On Hold'){
+      data.productionStage='On Hold';data.materialStatus='Out of Stock';
+      if(!data.holdReason)data.holdReason=data.material+' is out of stock';
+      toast('⚠️ Material unavailable — moved to On Hold','info');
+    }
+    if(editingOrderId){
+      const ex=(store.orders||{})[editingOrderId]||{};
+      const upd=Object.assign({},ex,data,{updatedAt:now,id:editingOrderId,vendorUid:ex.vendorUid||'',vendorEmail:ex.vendorEmail||''});
+      dbSet('/orders/'+editingOrderId,upd).then(()=>{
+        if(demoMode){store.orders[editingOrderId]=upd;renderAll();}
+        /* Log: note image addition separately from a plain edit */
+        const imgAdded=(data.sampleImageUrl&&data.sampleImageUrl!==ex.sampleImageUrl)||(data.productImageUrl&&data.productImageUrl!==ex.productImageUrl);
+        logActivity(editingOrderId, imgAdded?'image added':'edited the order');
+        toast('Order updated ✓','success');closeModal('order-overlay');
+      });
+    }else{
+      const key=dbPushKey();
+      const vendorUid  =demoMode?'demo':(currentUser?.uid||'');
+      const vendorEmail=demoMode?'demo@vandenloom.com':(currentUser?.email||'');
+      const no=Object.assign({id:key,createdAt:now,updatedAt:now,vendorUid,vendorEmail},data);
+      dbSet('/orders/'+key,no).then(()=>{
+        if(demoMode){if(!store.orders)store.orders={};store.orders[key]=no;renderAll();}
+        logActivity(key,'created the order');
+        toast('Order created ✓','success');closeModal('order-overlay');
+      });
+    }
+  }
+  function deleteOrder(){
+    if(!requireAdmin('delete orders'))return;
+    if(!editingOrderId||!confirm('Delete this order? Cannot be undone.'))return;
+    dbRemove('/orders/'+editingOrderId).then(()=>{
+      if(demoMode){delete store.orders[editingOrderId];renderAll();}
+      toast('Order deleted','info');closeModal('order-overlay');
+    });
+  }
+
+  /* ── Drag & Drop ── */
+  let _pendingMove=null;  /* holds {orderId,newStage} awaiting confirmation */
+
+  /* Entry point from drag/drop — runs permission checks, then asks for confirmation */
+  function moveCardToStage(orderId,newStage){
+    const order=(store.orders||{})[orderId];
+    if(!order||order.productionStage===newStage)return;
+    /* Permission: admin, vendor (own cards), and staff can all move cards */
+    if(currentRole==='vendor'&&!demoMode&&order.vendorUid!==currentUser?.uid){
+      toast('You can only move your own orders','error');return;
+    }
+    /* (Staff have no restriction on which cards they can move) */
+    if(newStage!=='On Hold'){
+      const mat=(store.materials||{})[sk(order.material)];
+      if(mat&&mat.qty<=0){toast('⚠️ Material unavailable — cannot move out of hold','error');return;}
+    }
+    /* Ask for confirmation before committing the move */
+    _pendingMove={orderId,newStage,fromStage:order.productionStage};
+    document.getElementById('confirm-title').textContent='Move Order?';
+    document.getElementById('confirm-message').innerHTML=
+      `Move <b>${esc(order.orderNumber||'this order')}</b><br>`+
+      `from <b>${esc(order.productionStage)}</b><br>to <b>${esc(newStage)}</b>?`;
+    openModal('confirm-overlay');
+  }
+
+  /* User confirmed — commit the move */
+  function confirmYes(){
+    closeModal('confirm-overlay');
+    if(!_pendingMove)return;
+    const {orderId,newStage,fromStage}=_pendingMove;
+    _pendingMove=null;
+    const order=(store.orders||{})[orderId];
+    if(!order)return;
+    /* Path A → Path B transition */
+    let wfPath=order.workflowPath||'direct';
+    if(order.productionStage==='Sample Approved'&&newStage==='Rug Weaving Started')wfPath='direct';
+    const updates={productionStage:newStage,workflowPath:wfPath,updatedAt:new Date().toISOString(),
+                   stageEnteredAt:new Date().toISOString()};  /* track when it entered this stage (for stuck detection) */
+    dbUpdate('/orders/'+orderId,updates).then(()=>{
+      if(demoMode){Object.assign(store.orders[orderId],updates);renderAll();}
+    });
+    logActivity(orderId,`moved it from ${fromStage} to ${newStage}`);
+    toast('Moved to '+newStage,'success');
+  }
+
+  /* User cancelled — board stays unchanged, just re-render to snap card back */
+  function confirmNo(){
+    closeModal('confirm-overlay');
+    _pendingMove=null;
+    renderCards();  /* redraw so any visual drag state resets */
+  }
+
+  /* Touch drag (mobile) — LONG-PRESS (350ms) to drag.
+     Quick touch+swipe scrolls the board normally.
+     Holding activates drag mode with a vibration cue. */
+  let tCard=null,tClone=null,tOrigin=null,tTimer=null,tStartX=0,tStartY=0,tActive=false;
+  function setupTouchDrag(card,orderId){
+    card.addEventListener('touchstart',e=>{
+      const t=e.touches[0];
+      tStartX=t.clientX;tStartY=t.clientY;tActive=false;
+      tTimer=setTimeout(()=>{
+        tActive=true;
+        tCard={id:orderId};
+        tOrigin=card.closest('.col-cards')?.dataset.stage;
+        card.classList.add('touch-dragging');
+        tClone=card.cloneNode(true);
+        tClone.style.cssText=`position:fixed;z-index:9999;opacity:.85;pointer-events:none;width:${card.offsetWidth}px;transform:rotate(2deg);box-shadow:0 8px 32px rgba(0,0,0,.6);`;
+        document.body.appendChild(tClone);
+        moveTClone(t);
+        if(navigator.vibrate)navigator.vibrate(40);
+      },350);
+    },{passive:true});
+    card.addEventListener('touchmove',e=>{
+      const t=e.touches[0];
+      if(!tActive){
+        /* finger moved before long-press fired → user is scrolling */
+        if(Math.abs(t.clientX-tStartX)>10||Math.abs(t.clientY-tStartY)>10)clearTimeout(tTimer);
+        return;
+      }
+      e.preventDefault();
+      moveTClone(t);
+      clearDragOver();
+      document.elementFromPoint(t.clientX,t.clientY)?.closest('.kanban-col')?.classList.add('drag-over');
+    },{passive:false});
+    card.addEventListener('touchend',e=>{
+      clearTimeout(tTimer);
+      card.classList.remove('touch-dragging');
+      if(!tActive||!tClone){tActive=false;return;}
+      const t=e.changedTouches[0];
+      const col=document.elementFromPoint(t.clientX,t.clientY)?.closest('.kanban-col');
+      if(col&&tCard){const s=col.dataset.stage;if(s&&s!==tOrigin)moveCardToStage(tCard.id,s);}
+      tClone.remove();tClone=null;tCard=null;tActive=false;clearDragOver();
+    });
+    card.addEventListener('touchcancel',()=>{
+      clearTimeout(tTimer);
+      card.classList.remove('touch-dragging');
+      if(tClone){tClone.remove();tClone=null;}
+      tCard=null;tActive=false;clearDragOver();
+    });
+  }
+  function moveTClone(t){if(tClone){tClone.style.left=(t.clientX-20)+'px';tClone.style.top=(t.clientY-30)+'px';}}
+
+  /* ── Settings ── */
+  function openSettings(){
+    if(!requireAdmin('open settings'))return;
+    renderSettingsStages();renderSettingsCategories();renderSettingsFields();
+    renderSettingsMaterials();renderSettingsUsers();updateColorPickers();
+    openModal('settings-overlay');
+  }
+  function switchSettingsTab(pane,btn){
+    document.querySelectorAll('.settings-pane').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.settings-tab').forEach(b=>b.classList.remove('active'));
+    document.getElementById('pane-'+pane).classList.add('active');btn.classList.add('active');
+    const rf={stages:renderSettingsStages,categories:renderSettingsCategories,fields:renderSettingsFields,materials:renderSettingsMaterials,users:renderSettingsUsers};
+    rf[pane]?.();
+  }
+
+  /* Stages */
+  function renderSettingsStages(){
+    const list=document.getElementById('stages-list');list.innerHTML='';
+    (store.stages||DEFAULTS.stages).forEach((s,i)=>{
+      const item=document.createElement('div');item.className='settings-item';item.draggable=true;item.dataset.idx=i;
+      item.innerHTML=`<span class="drag-handle">&#10783;</span>
+        <input type="text" value="${esc(s.name)}" onchange="App.renameStageAt(${i},this.value)"/>
+        <select style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:3px 6px;border-radius:4px;font-size:.72rem;outline:none" onchange="App.changeStagePathAt(${i},this.value)">
+          <option value="shared" ${s.path==='shared'?'selected':''}>Shared</option>
+          <option value="sample" ${s.path==='sample'?'selected':''}>Sample</option>
+          <option value="direct" ${s.path==='direct'?'selected':''}>Direct</option>
+        </select>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="App.deleteStageAt(${i})">&#10005;</button>`;
+      setupSettingsDrag(item,i);list.appendChild(item);
+    });
+  }
+  function addStage(){
+    if(!requireAdmin('add stages'))return;
+    const inp=document.getElementById('new-stage-input');
+    const pth=document.getElementById('new-stage-path').value||'shared';
+    addStageByName(inp.value.trim(),pth);inp.value='';
+  }
+  function addStageByName(name,path='shared'){
+    if(!name)return;
+    const stages=[...(store.stages||DEFAULTS.stages),{name,path,order:Date.now()}];
+    dbSet('/stages',stages).then(()=>{if(demoMode){store.stages=stages;renderAll();}renderSettingsStages();toast('Stage added','success');});
+  }
+  function renameStageAt(idx,val){
+    if(!val.trim()||!requireAdmin('rename stages'))return;
+    const stages=[...(store.stages||[])];const old=stages[idx].name;stages[idx]={...stages[idx],name:val.trim()};
+    const ou={};Object.values(store.orders||{}).forEach(o=>{if(o.productionStage===old)ou['/orders/'+o.id+'/productionStage']=val.trim();});
+    dbSet('/stages',stages).then(()=>{if(demoMode)store.stages=stages;});
+    if(Object.keys(ou).length){
+      if(!demoMode)db.ref('/').update(ou);
+      else Object.entries(ou).forEach(([p,v])=>{const id=p.split('/')[2];if(store.orders[id])store.orders[id].productionStage=v;});
+    }
+    if(demoMode){saveDemo();renderAll();}toast('Stage renamed','success');
+  }
+  function changeStagePathAt(idx,path){
+    if(!requireAdmin('change stage path'))return;
+    const stages=[...(store.stages||[])];stages[idx]={...stages[idx],path};
+    dbSet('/stages',stages).then(()=>{if(demoMode){store.stages=stages;renderAll();}});
+    toast('Path updated','success');
+  }
+  function deleteStageAt(idx){
+    if(!requireAdmin('delete stages'))return;
+    const stages=[...(store.stages||[])];const name=stages[idx].name;
+    const hasOrders=Object.values(store.orders||{}).some(o=>o.productionStage===name);
+    if(hasOrders&&!confirm(`Stage "${name}" has orders. They will move to Pending. Continue?`))return;
+    stages.splice(idx,1);
+    const ou={};
+    if(hasOrders)Object.values(store.orders||{}).forEach(o=>{if(o.productionStage===name)ou['/orders/'+o.id+'/productionStage']='Pending';});
+    dbSet('/stages',stages).then(()=>{if(demoMode)store.stages=stages;});
+    if(Object.keys(ou).length){
+      if(!demoMode)db.ref('/').update(ou);
+      else Object.entries(ou).forEach(([p,v])=>{const id=p.split('/')[2];if(store.orders[id])store.orders[id].productionStage=v;});
+    }
+    if(demoMode){saveDemo();renderAll();}renderSettingsStages();toast('Stage deleted','info');
+  }
+  let sDragIdx=null;
+  function setupSettingsDrag(item,idx){
+    item.addEventListener('dragstart',e=>{sDragIdx=idx;e.dataTransfer.effectAllowed='move';});
+    item.addEventListener('dragover',e=>{e.preventDefault();item.style.outline='1px dashed var(--accent)';});
+    item.addEventListener('dragleave',()=>{item.style.outline='';});
+    item.addEventListener('drop',e=>{
+      e.preventDefault();item.style.outline='';
+      if(sDragIdx==null||sDragIdx===idx)return;
+      const stages=[...(store.stages||[])];const[s]=stages.splice(sDragIdx,1);stages.splice(idx,0,s);
+      dbSet('/stages',stages).then(()=>{if(demoMode){store.stages=stages;renderAll();}});
+      renderSettingsStages();sDragIdx=null;
+    });
+  }
+
+  /* Categories */
+  function renderSettingsCategories(){
+    const list=document.getElementById('categories-list');list.innerHTML='';
+    (store.categories||[]).forEach((c,i)=>{
+      const item=document.createElement('div');item.className='settings-item';
+      item.innerHTML=`<input type="text" value="${esc(c)}" onchange="App.renameCategoryAt(${i},this.value)" style="flex:1"/>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="App.deleteCategoryAt(${i})">&#10005;</button>`;
+      list.appendChild(item);
+    });
+  }
+  function addCategory(){
+    if(!requireAdmin('add categories'))return;
+    const inp=document.getElementById('new-cat-input');const v=inp.value.trim().toUpperCase();if(!v)return;
+    const cats=[...(store.categories||[]),v];
+    dbSet('/categories',cats).then(()=>{if(demoMode){store.categories=cats;renderAll();}});
+    renderSettingsCategories();inp.value='';toast('Category added','success');
+  }
+  function renameCategoryAt(idx,val){
+    if(!val.trim()||!requireAdmin('rename categories'))return;
+    const cats=[...(store.categories||[])];cats[idx]=val.trim().toUpperCase();
+    dbSet('/categories',cats).then(()=>{if(demoMode){store.categories=cats;renderAll();}});toast('Category renamed','success');
+  }
+  function deleteCategoryAt(idx){
+    if(!requireAdmin('delete categories'))return;
+    const cats=[...(store.categories||[])];cats.splice(idx,1);
+    dbSet('/categories',cats).then(()=>{if(demoMode){store.categories=cats;renderAll();}});
+    renderSettingsCategories();toast('Category removed','info');
+  }
+
+  /* Order Fields */
+  function renderSettingsFields(){
+    const div=document.getElementById('fields-list');div.innerHTML='';
+    (store.fields||DEFAULTS.fields).forEach((f,i)=>{
+      const item=document.createElement('div');item.className='settings-item';item.style.justifyContent='space-between';
+      item.innerHTML=`<span style="font-size:.81rem;flex:1">${esc(f.label)} <span style="color:var(--text-muted);font-size:.67rem">(${esc(f.key)})</span></span>
+        ${f.core
+          ?`<span style="font-size:.7rem;color:var(--text-muted)">Core</span>`
+          :`<label style="display:flex;align-items:center;gap:6px;font-size:.77rem;cursor:pointer">
+              <input type="checkbox" ${f.visible?'checked':''} onchange="App.toggleField(${i},this.checked)"/> Visible
+             </label>
+             <button class="btn btn-danger btn-sm btn-icon" onclick="App.deleteField(${i})">&#10005;</button>`
+        }`;
+      div.appendChild(item);
+    });
+  }
+  function toggleField(idx,visible){
+    if(!requireAdmin('toggle fields'))return;
+    const fields=store.fields||DEFAULTS.fields;fields[idx].visible=visible;
+    dbSet('/fields',fields).then(()=>{if(demoMode)store.fields=fields;});toast('Field updated','success');
+  }
+  function addCustomField(){
+    if(!requireAdmin('add fields'))return;
+    const key=document.getElementById('new-field-key').value.trim();
+    const label=document.getElementById('new-field-label').value.trim();
+    if(!key||!label){toast('Key and label required','error');return;}
+    if(!/^[a-zA-Z][a-zA-Z0-9]*$/.test(key)){toast('Key must be camelCase','error');return;}
+    const fields=[...(store.fields||DEFAULTS.fields)];
+    if(fields.find(f=>f.key===key)){toast('Key already exists','error');return;}
+    fields.push({key,label,core:false,visible:true,type:'text'});
+    dbSet('/fields',fields).then(()=>{if(demoMode)store.fields=fields;});
+    renderSettingsFields();document.getElementById('new-field-key').value='';document.getElementById('new-field-label').value='';toast('Field added','success');
+  }
+  function deleteField(idx){
+    if(!requireAdmin('delete fields'))return;
+    const fields=[...(store.fields||DEFAULTS.fields)];
+    if(fields[idx]?.core){toast('Cannot delete core field','error');return;}
+    fields.splice(idx,1);
+    dbSet('/fields',fields).then(()=>{if(demoMode)store.fields=fields;});
+    renderSettingsFields();toast('Field removed','info');
+  }
+
+  /* Materials */
+  function renderSettingsMaterials(){
+    const tbody=document.getElementById('materials-tbody');tbody.innerHTML='';
+    Object.entries(store.materials||{}).forEach(([key,m])=>{
+      const sc=m.qty>50?'stock-ok':m.qty>0?'stock-low':'stock-out';
+      const sl=m.qty>50?'Good':m.qty>0?'Low':'Out';
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${esc(m.name)}</td>
+        <td><input type="number" class="inv-qty-input" value="${m.qty}" min="0" onchange="App.updateMaterialQty('${key}',this.value)"/></td>
+        <td>${esc(m.unit)}</td><td class="${sc}">${sl}</td>
+        <td><button class="btn btn-danger btn-sm btn-icon" onclick="App.deleteMaterial('${key}')">&#10005;</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  function addMaterial(){
+    if(!requireAdmin('add materials'))return;
+    const name=document.getElementById('new-mat-name').value.trim();
+    const qty=parseFloat(document.getElementById('new-mat-qty').value)||0;
+    const unit=document.getElementById('new-mat-unit').value.trim()||'kg';
+    if(!name){toast('Material name required','error');return;}
+    const key=sk(name);const mat={name,qty,unit,updatedAt:new Date().toISOString()};
+    dbSet('/materials/'+key,mat).then(()=>{if(demoMode){if(!store.materials)store.materials={};store.materials[key]=mat;renderAll();}renderSettingsMaterials();toast('Material added','success');});
+    document.getElementById('new-mat-name').value='';document.getElementById('new-mat-qty').value='';document.getElementById('new-mat-unit').value='';
+  }
+  function updateMaterialQty(key,val){
+    if(!requireAdmin('update quantities'))return;
+    const qty=parseFloat(val)||0;const now=new Date().toISOString();
+    dbUpdate('/materials/'+key,{qty,updatedAt:now}).then(()=>{
+      if(demoMode&&store.materials[key])store.materials[key].qty=qty;
+      const matName=(store.materials[key]||{}).name;
+      if(matName&&qty>0)releaseHeldOrders(matName);
+      if(demoMode)renderAll();toast('Quantity updated','success');
+    });
+  }
+  function releaseHeldOrders(matName){
+    const u={};
+    Object.values(store.orders||{}).forEach(o=>{
+      if(o.material===matName&&o.productionStage==='On Hold'&&o.holdReason?.includes('out of stock')){
+        u['/orders/'+o.id+'/productionStage']='Pending';
+        u['/orders/'+o.id+'/materialStatus']='Available';
+        u['/orders/'+o.id+'/holdReason']='';
+        u['/orders/'+o.id+'/updatedAt']=new Date().toISOString();
+      }
+    });
+    if(!Object.keys(u).length)return;
+    if(!demoMode)db.ref('/').update(u);
+    else{Object.entries(u).forEach(([p,v])=>{const a=p.split('/'),id=a[2],f=a[3];if(store.orders[id])store.orders[id][f]=v;});saveDemo();renderAll();}
+    toast(`✅ ${Object.keys(u).length/4} order(s) released from hold`,'success');
+  }
+  function deleteMaterial(key){
+    if(!requireAdmin('delete materials'))return;
+    if(!confirm('Delete this material?'))return;
+    dbRemove('/materials/'+key).then(()=>{if(demoMode){delete store.materials[key];renderAll();}renderSettingsMaterials();toast('Material removed','info');});
+  }
+
+  /* Colors */
+  function updateColorPickers(){
+    const c=store.colors||DEFAULTS.colors;
+    const e1=document.getElementById('color-on-schedule');
+    const e2=document.getElementById('color-on-hold');
+    const e3=document.getElementById('color-delayed');
+    if(e1)e1.value=c['on-schedule']||'#22c55e';
+    if(e2)e2.value=c['on-hold']||'#f59e0b';
+    if(e3)e3.value=c['delayed']||'#ef4444';
+    const sd=document.getElementById('stuck-days-input');
+    if(sd)sd.value=store.stuckDays!=null?store.stuckDays:30;
+  }
+  function saveColor(key,val){
+    if(!requireAdmin('change colors'))return;
+    const colors=Object.assign({},store.colors||DEFAULTS.colors);colors[key]=val;
+    dbSet('/colors',colors).then(()=>{if(demoMode){store.colors=colors;renderAll();}});
+  }
+  /* Save the customizable stuck-days threshold */
+  function saveStuckDays(val){
+    if(!requireAdmin('change settings'))return;
+    const days=Math.max(1,parseInt(val)||30);
+    dbSet('/stuckDays',days).then(()=>{if(demoMode){store.stuckDays=days;renderAll();}else store.stuckDays=days;});
+    toast('Stuck alert set to '+days+' days','success');
+  }
+
+  /* Users */
+  function renderSettingsUsers(){
+    const list=document.getElementById('users-list');
+    list.innerHTML='<div style="color:var(--text-muted);font-size:.8rem">Loading&hellip;</div>';
+    if(demoMode){list.innerHTML='<div class="settings-item" style="font-size:.8rem;color:var(--text-muted)">User management requires Firebase — not available in Demo Mode.</div>';return;}
+    Promise.all([db.ref('/roles').once('value'),db.ref('/userEmails').once('value')]).then(([rs,es])=>{
+      const roles=rs.val()||{},emails=es.val()||{};
+      list.innerHTML='';
+      if(!Object.keys(roles).length){list.innerHTML='<div style="color:var(--text-muted);font-size:.8rem">No users yet.</div>';return;}
+      Object.entries(roles).forEach(([uid,role])=>{
+        const email=emails[uid]||'(unknown)';
+        const isSelf=currentUser&&uid===currentUser.uid;
+        const row=document.createElement('div');row.className='user-row';
+        row.innerHTML=`<div><div class="email">${esc(email)}</div><div class="uid">${esc(uid)}</div></div>
+          <select class="role-select" onchange="App.setUserRole('${uid}',this.value)" ${isSelf?'disabled':''}>
+            <option value="admin"  ${role==='admin' ?'selected':''}>Admin</option>
+            <option value="vendor" ${role==='vendor'?'selected':''}>Vendor</option>
+            <option value="staff"  ${role==='staff' ?'selected':''}>Staff</option>
+          </select>
+          <span class="role-pill ${role}">${role}</span>`;
+        list.appendChild(row);
+      });
+    });
+  }
+  function setUserRole(uid,role){
+    if(!requireAdmin('change user roles'))return;
+    db.ref('/roles/'+uid).set(role).then(()=>{toast('Role set to '+role,'success');renderSettingsUsers();});
+  }
+
+  /* Column context menu */
+  function showColMenu(sName,e){
+    colMenuTarget=sName;
+    const m=document.getElementById('col-menu');
+    m.style.display='block';m.style.left=e.clientX+'px';m.style.top=e.clientY+'px';
+  }
+  document.addEventListener('click',()=>{document.getElementById('col-menu').style.display='none';});
+  function renameColPrompt(){
+    const n=prompt('Rename stage:',colMenuTarget);if(!n||!n.trim()||n.trim()===colMenuTarget)return;
+    const idx=(store.stages||[]).findIndex(s=>s.name===colMenuTarget);if(idx>=0)renameStageAt(idx,n.trim());
+  }
+  function changeColPath(){
+    const cur=(store.stages||[]).find(s=>s.name===colMenuTarget)?.path||'shared';
+    const n=prompt('Change path (shared / sample / direct):',cur);
+    if(!n||!['shared','sample','direct'].includes(n.toLowerCase()))return;
+    const idx=(store.stages||[]).findIndex(s=>s.name===colMenuTarget);if(idx>=0)changeStagePathAt(idx,n.toLowerCase());
+  }
+  function deleteColConfirm(){
+    const idx=(store.stages||[]).findIndex(s=>s.name===colMenuTarget);if(idx>=0)deleteStageAt(idx);
+  }
+
+  /* Modal helpers */
+  function openModal(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden';}
+  function closeModal(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';}
+  function overlayClick(e,id){if(e.target.id===id)closeModal(id);}
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelectorAll('.overlay.open').forEach(o=>o.classList.remove('open'));document.body.style.overflow='';}});
+
+  /* Screen / loading helpers */
+  function showEl(id){document.getElementById(id).classList.remove('hidden');}
+  function hideEl(id){document.getElementById(id).classList.add('hidden');}
+  function showLoading(){const ls=document.getElementById('loading-screen');ls.classList.remove('hide');ls.style.display='';}
+  function hideLoading(){const ls=document.getElementById('loading-screen');ls.classList.add('hide');setTimeout(()=>ls.style.display='none',600);}
+
+  /* Toast */
+  function toast(msg,type='info'){
+    const t=document.createElement('div');t.className=`toast ${type}`;t.textContent=msg;
+    document.getElementById('toast-container').appendChild(t);
+    setTimeout(()=>t.remove(),3500);
+  }
+
+  /* Utilities */
+  function esc(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function sk(n){return n.toLowerCase().replace(/[^a-z0-9]/g,'_');}
+  function fmtDate(iso){if(!iso)return'—';return new Date(iso).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'});}
+
+  /*
+    ════════════════════════════════════════════════════════
+    BUILT-IN FIREBASE CONFIG — VandenLoom Tracker
+    This is YOUR project's config, baked in so your team never
+    sees the "Connect Firebase" screen — they go straight to login.
+
+    To change projects later: replace the values below with a new
+    project's config, or clear it to null to show the setup screen again.
+    ════════════════════════════════════════════════════════
+  */
+  const BUILTIN_FIREBASE_CONFIG = {
+    apiKey: "AIzaSyD6U7gdvcb2ZU6P_Gt0QCG5WGgUOK4hsXw",
+    authDomain: "vandenloom-tracker.firebaseapp.com",
+    databaseURL: "https://vandenloom-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "vandenloom-tracker",
+    storageBucket: "vandenloom-tracker.firebasestorage.app",
+    messagingSenderId: "433405177111",
+    appId: "1:433405177111:web:627cc5d479b39f0ac81b52"
+  };
+
+  /* Bootstrap */
+  function init(){
+    /* 1. If a built-in config is set, use it automatically — everyone gets the same project */
+    if(BUILTIN_FIREBASE_CONFIG){ initFirebase(BUILTIN_FIREBASE_CONFIG); return; }
+    /* 2. Otherwise fall back to whatever was previously pasted/saved on this device */
+    const savedCfg=localStorage.getItem('vl_fb_config');
+    const savedDemo=localStorage.getItem('vl_demo');
+    if(savedCfg){try{initFirebase(JSON.parse(savedCfg));return;}catch(e){}}
+    if(savedDemo){demoMode_();return;}
+    /* 3. No config anywhere — show the setup screen */
+    hideLoading();showEl('fb-config-screen');
+  }
+
+  return{
+    init,connectFirebase,demoMode:demoMode_,
+    onUserReady,showLoginScreen,ensureUserRole,recordUserEmail,
+    openNewOrder,openEditOrder,openSettings,
+    saveOrder,deleteOrder,
+    closeModal,overlayClick,
+    applyFilters,onSearch,clearFilters,
+    switchSettingsTab,
+    addStage,addStageByName,renameStageAt,changeStagePathAt,deleteStageAt,
+    addCategory,renameCategoryAt,deleteCategoryAt,
+    toggleField,addCustomField,deleteField,
+    addMaterial,updateMaterialQty,deleteMaterial,
+    saveColor,setUserRole,saveStuckDays,
+    confirmYes,confirmNo,
+    showColMenu,renameColPrompt,changeColPath,deleteColConfirm,
+    _selectPath,_previewImg,_clearImg,
+    toast,requireOrderWrite,statFilter,
+  };
+})();
+
+document.addEventListener('DOMContentLoaded',()=>App.init());
+/*
+  ═══════════════════════════════════════════════════════
+  FIREBASE SECURITY RULES  (Realtime Database)
+  Paste these into Firebase Console → Database → Rules
+  to enforce vendor isolation at the server level.
+
+  Without these rules the client-side filtering still
+  works visually, but a determined user could read raw
+  data via Firebase console. These rules prevent that.
+  ═══════════════════════════════════════════════════════
+
+  {
+    "rules": {
+      ".read":  "auth != null && root.child('roles').child(auth.uid).val() === 'admin'",
+      ".write": "auth != null && root.child('roles').child(auth.uid).val() === 'admin'",
+
+      "roles": {
+        ".read":  "auth != null",
+        "$uid": {
+          ".write": "auth != null && (auth.uid === $uid || root.child('roles').child(auth.uid).val() === 'admin')"
+        }
+      },
+      "userEmails": {
+        ".read":  "auth != null && root.child('roles').child(auth.uid).val() === 'admin'",
+        ".write": "auth != null"
+      },
+      "stages":     { ".read":"auth != null" },
+      "categories": { ".read":"auth != null" },
+      "fields":     { ".read":"auth != null" },
+      "materials":  { ".read":"auth != null" },
+      "colors":     { ".read":"auth != null" },
+      "stuckDays":  { ".read":"auth != null" },
+      "activity": {
+        ".read":  "auth != null",
+        "$orderId": { ".write": "auth != null" }
+      },
+      "orders": {
+        ".indexOn": ["vendorUid"],
+        ".read": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff')",
+        "$orderId": {
+          ".read":  "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff' || data.child('vendorUid').val() === auth.uid)",
+          ".write": "auth != null && (root.child('roles').child(auth.uid).val() === 'admin' || root.child('roles').child(auth.uid).val() === 'staff' || (!data.exists() && newData.child('vendorUid').val() === auth.uid) || (data.child('vendorUid').val() === auth.uid && newData.child('vendorUid').val() === auth.uid))"
+        }
+      }
+    }
+  }
+
+  HOW TO SET UP VENDORS:
+  1. Have each vendor register an account (Create Account on login screen)
+  2. Go to Settings → Users
+  3. Change their role from 'staff' to 'vendor'
+  4. Done — they now see only their own orders
+*/
+</script>
+</body>
+</html>
