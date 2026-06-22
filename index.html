@@ -286,6 +286,159 @@ select.form-control option{background:var(--surface2)}
 .col-menu-item{display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);font-size:.79rem;padding:8px 16px;cursor:pointer;transition:background .15s}
 .col-menu-item:hover{background:var(--border)}
 
+
+/* ════════════════════════════════════════════════════════
+   VIEW TABS — Dashboard / Board switcher in topbar
+   ════════════════════════════════════════════════════════ */
+#view-tabs{display:flex;gap:2px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px;flex-shrink:0}
+.view-tab{padding:5px 14px;border-radius:4px;font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:none;background:none;color:var(--text-muted);cursor:pointer;transition:all .2s;white-space:nowrap}
+.view-tab.active{background:var(--accent);color:#0f1117}
+.view-tab:not(.active):hover{background:var(--border);color:var(--text)}
+
+/* ════════════════════════════════════════════════════════
+   DASHBOARD WRAPPER
+   ════════════════════════════════════════════════════════ */
+#dashboard-wrap{
+  margin-top:var(--header-total);
+  padding:18px 20px 40px;
+  min-height:calc(100vh - var(--header-total));
+  overflow-y:auto;
+  display:none;   /* hidden by default; shown when Dashboard tab active */
+}
+#dashboard-wrap.active{display:block}
+#board-wrap.active{display:block}
+#board-wrap{display:none}  /* board hidden by default; shown when Board tab active */
+
+/* ── SECTION TITLE ── */
+.dash-section-title{
+  font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.14em;
+  color:var(--text-muted);margin:24px 0 10px;
+  display:flex;align-items:center;gap:8px;
+}
+.dash-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ════════════════════════════════════════════════════════
+   SECTION 1 — COMMAND CENTER TILES
+   ════════════════════════════════════════════════════════ */
+.cmd-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:6px}
+@media(max-width:900px){.cmd-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:500px){.cmd-grid{grid-template-columns:repeat(2,1fr)}}
+.cmd-tile{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 12px;
+  cursor:pointer;transition:border-color .2s,transform .15s,box-shadow .2s;
+  text-align:center;position:relative;overflow:hidden;
+}
+.cmd-tile:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow)}
+.cmd-tile::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.cmd-tile.t-total::before  {background:var(--accent)}
+.cmd-tile.t-hold::before   {background:var(--yellow)}
+.cmd-tile.t-overdue::before{background:var(--red)}
+.cmd-tile.t-stuck::before  {background:#f97316}
+.cmd-tile.t-approval::before{background:var(--path-sample)}
+.cmd-tile.t-done::before   {background:var(--green)}
+.cmd-tile .tile-icon{font-size:1.3rem;margin-bottom:6px;display:block}
+.cmd-tile .tile-num {font-size:1.8rem;font-weight:800;line-height:1;display:block;margin-bottom:4px}
+.cmd-tile .tile-lbl {font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted)}
+.cmd-tile.t-total   .tile-num{color:var(--accent)}
+.cmd-tile.t-hold    .tile-num{color:var(--yellow)}
+.cmd-tile.t-overdue .tile-num{color:var(--red)}
+.cmd-tile.t-stuck   .tile-num{color:#f97316}
+.cmd-tile.t-approval.tile-num{color:var(--path-sample)}
+.cmd-tile.t-done    .tile-num{color:var(--green)}
+
+/* ════════════════════════════════════════════════════════
+   SECTION 2 — DUE DATE TIMELINE
+   ════════════════════════════════════════════════════════ */
+.due-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:700px){.due-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:400px){.due-grid{grid-template-columns:1fr}}
+.due-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.due-col-hdr{padding:9px 12px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;display:flex;justify-content:space-between;align-items:center}
+.due-col-hdr.overdue{background:rgba(239,68,68,.15);color:var(--red);border-bottom:1px solid rgba(239,68,68,.25)}
+.due-col-hdr.today  {background:rgba(249,115,22,.15);color:#f97316;border-bottom:1px solid rgba(249,115,22,.25)}
+.due-col-hdr.week   {background:rgba(201,169,110,.12);color:var(--accent);border-bottom:1px solid rgba(201,169,110,.2)}
+.due-col-hdr.later  {background:rgba(107,114,128,.12);color:var(--text-muted);border-bottom:1px solid var(--border)}
+.due-col-hdr .due-count{font-size:.75rem;font-weight:800;padding:1px 7px;border-radius:20px;background:rgba(255,255,255,.1)}
+.due-items{padding:6px;display:flex;flex-direction:column;gap:5px;max-height:240px;overflow-y:auto}
+.due-item{padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .2s}
+.due-item:hover{border-color:var(--accent)}
+.due-item .di-num{font-size:.64rem;font-family:var(--font-mono);color:var(--accent);font-weight:700}
+.due-item .di-cust{font-size:.77rem;font-weight:600;color:var(--text);margin:2px 0}
+.due-item .di-stage{font-size:.66rem;color:var(--text-muted)}
+.due-item .di-date{font-size:.62rem;color:var(--text-muted);float:right;margin-top:-16px}
+.due-empty{font-size:.72rem;color:var(--text-muted);text-align:center;padding:16px}
+
+/* ════════════════════════════════════════════════════════
+   SECTION 3 — PATH SPLIT VIEW
+   ════════════════════════════════════════════════════════ */
+.path-split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.path-split{grid-template-columns:1fr}}
+.path-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.path-panel-hdr{padding:10px 14px;font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:8px}
+.path-panel-hdr.sample{background:rgba(168,85,247,.12);color:var(--path-sample);border-bottom:1px solid rgba(168,85,247,.2)}
+.path-panel-hdr.direct{background:rgba(20,184,166,.1);color:var(--path-direct);border-bottom:1px solid rgba(20,184,166,.18)}
+.path-stage-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.path-stage-row:last-child{border-bottom:none}
+.path-stage-row:hover{background:var(--surface2)}
+.ps-name{font-size:.78rem;color:var(--text)}
+.ps-count{font-size:.82rem;font-weight:800;padding:2px 10px;border-radius:20px;min-width:28px;text-align:center}
+.ps-count.zero{color:var(--text-muted);background:var(--surface2)}
+.ps-count.has{color:#0f1117;background:var(--accent)}
+.ps-count.hot{color:#fff;background:var(--red)}
+
+/* ════════════════════════════════════════════════════════
+   SECTION 4 — VENDOR ACTIVITY  (admin only)
+   ════════════════════════════════════════════════════════ */
+.vendor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.vendor-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;transition:border-color .2s}
+.vendor-card:hover{border-color:var(--accent)}
+.vendor-card .vc-name{font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.vendor-card .vc-avatar{width:26px;height:26px;border-radius:50%;background:var(--path-direct);color:#0f1117;font-size:.68rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.vc-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px}
+.vc-stat{text-align:center;padding:6px 4px;background:var(--surface2);border-radius:var(--radius-sm)}
+.vc-stat .vs-num{font-size:1.1rem;font-weight:800;display:block}
+.vc-stat .vs-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted)}
+.vc-last{font-size:.66rem;color:var(--text-muted);border-top:1px solid var(--border);padding-top:8px;margin-top:2px}
+
+/* ════════════════════════════════════════════════════════
+   SECTION 6 — ACTIVITY FEED
+   ════════════════════════════════════════════════════════ */
+.feed-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto}
+.feed-item{display:flex;align-items:flex-start;gap:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)}
+.feed-icon{font-size:.9rem;flex-shrink:0;margin-top:1px}
+.feed-body{flex:1;min-width:0}
+.feed-body .fb-text{font-size:.77rem;color:var(--text);line-height:1.4}
+.feed-body .fb-text b{color:var(--accent)}
+.feed-body .fb-time{font-size:.64rem;color:var(--text-muted);margin-top:2px}
+.feed-order-num{font-size:.64rem;font-family:var(--font-mono);color:var(--accent);font-weight:700}
+
+/* ════════════════════════════════════════════════════════
+   HISTORY / DELETED ORDERS PANEL
+   ════════════════════════════════════════════════════════ */
+.history-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.history-list{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto}
+.history-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid rgba(239,68,68,.25);border-radius:var(--radius-sm);border-left:3px solid var(--red)}
+.history-item .hi-info{flex:1;min-width:0}
+.history-item .hi-num{font-size:.7rem;font-family:var(--font-mono);color:var(--red);font-weight:700}
+.history-item .hi-name{font-size:.82rem;font-weight:600;color:var(--text);margin:2px 0}
+.history-item .hi-meta{font-size:.68rem;color:var(--text-muted)}
+.history-item .hi-when{font-size:.64rem;color:var(--text-muted);white-space:nowrap}
+.restore-btn{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);color:var(--green);padding:5px 12px;border-radius:var(--radius-sm);font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s}
+.restore-btn:hover{background:rgba(34,197,94,.25)}
+.history-empty{font-size:.78rem;color:var(--text-muted);text-align:center;padding:24px}
+
+/* ════════════════════════════════════════════════════════
+   MOBILE OVERRIDES
+   ════════════════════════════════════════════════════════ */
+@media(max-width:640px){
+  #dashboard-wrap{padding:12px 12px 60px}
+  .cmd-tile .tile-num{font-size:1.4rem}
+  .cmd-tile{padding:10px 8px}
+  #view-tabs .view-tab{padding:5px 10px;font-size:.68rem}
+  .due-grid{grid-template-columns:1fr 1fr}
+}
+
 /* TOAST */
 #toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
 
@@ -395,6 +548,11 @@ select.form-control option{background:var(--surface2)}
 
 <div id="topbar">
   <div class="logo">VandenLoom <span>/ Tracker</span></div>
+  <!-- View switcher: Dashboard | Board -->
+  <div id="view-tabs">
+    <button class="view-tab active" id="tab-dashboard" onclick="App.switchView('dashboard')">&#128202; Dashboard</button>
+    <button class="view-tab"        id="tab-board"     onclick="App.switchView('board')">&#128203; Board</button>
+  </div>
   <div class="spacer"></div>
   <input type="text" id="search-input" placeholder="&#128269; Search&hellip;" oninput="App.onSearch()"/>
   <button class="topbar-btn" id="settings-btn" onclick="App.openSettings()">&#9881; Settings</button>
@@ -463,6 +621,106 @@ select.form-control option{background:var(--surface2)}
     <span class="legend-step">Completed</span>
   </div>
 </div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     DASHBOARD VIEW
+     ═══════════════════════════════════════════════════ -->
+<div id="dashboard-wrap" class="active">
+
+  <!-- SECTION 1: COMMAND CENTER -->
+  <div class="dash-section-title">&#128293; Command Center</div>
+  <div class="cmd-grid">
+    <div class="cmd-tile t-total"    onclick="App.switchView('board');App.statFilter('')">
+      <span class="tile-icon">&#128230;</span>
+      <span class="tile-num" id="dc-total">0</span>
+      <span class="tile-lbl">Total Active</span>
+    </div>
+    <div class="cmd-tile t-hold"     onclick="App.switchView('board');App.statFilter('on-hold')">
+      <span class="tile-icon">&#9208;&#65039;</span>
+      <span class="tile-num" id="dc-hold">0</span>
+      <span class="tile-lbl">On Hold</span>
+    </div>
+    <div class="cmd-tile t-overdue"  onclick="App.switchView('board');App.statFilter('delayed')">
+      <span class="tile-icon">&#9888;&#65039;</span>
+      <span class="tile-num" id="dc-overdue">0</span>
+      <span class="tile-lbl">Overdue</span>
+    </div>
+    <div class="cmd-tile t-stuck"    onclick="App.switchView('board')">
+      <span class="tile-icon">&#128308;</span>
+      <span class="tile-num" id="dc-stuck">0</span>
+      <span class="tile-lbl">Stuck</span>
+    </div>
+    <div class="cmd-tile t-approval" onclick="App.switchView('board');App.filterByStage('Awaiting Approval')">
+      <span class="tile-icon">&#129525;</span>
+      <span class="tile-num" id="dc-approval">0</span>
+      <span class="tile-lbl">Awaiting Approval</span>
+    </div>
+    <div class="cmd-tile t-done"     onclick="App.switchView('board');App.filterByStage('Completed')">
+      <span class="tile-icon">&#9989;</span>
+      <span class="tile-num" id="dc-done">0</span>
+      <span class="tile-lbl">Completed</span>
+    </div>
+  </div>
+
+  <!-- SECTION 2: DUE DATE TIMELINE -->
+  <div class="dash-section-title">&#128197; Due Date Timeline</div>
+  <div class="due-grid">
+    <div class="due-col">
+      <div class="due-col-hdr overdue">&#128308; Overdue <span class="due-count" id="due-count-overdue">0</span></div>
+      <div class="due-items" id="due-overdue"></div>
+    </div>
+    <div class="due-col">
+      <div class="due-col-hdr today">&#9889; Due Today <span class="due-count" id="due-count-today">0</span></div>
+      <div class="due-items" id="due-today"></div>
+    </div>
+    <div class="due-col">
+      <div class="due-col-hdr week">&#128197; This Week <span class="due-count" id="due-count-week">0</span></div>
+      <div class="due-items" id="due-week"></div>
+    </div>
+    <div class="due-col">
+      <div class="due-col-hdr later">&#128336; Next Week+ <span class="due-count" id="due-count-later">0</span></div>
+      <div class="due-items" id="due-later"></div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: PATH SPLIT VIEW -->
+  <div class="dash-section-title">&#128336; Production Flow</div>
+  <div class="path-split">
+    <div class="path-panel">
+      <div class="path-panel-hdr sample">&#129525; Path A &mdash; Sample Approval</div>
+      <div id="path-split-sample"></div>
+    </div>
+    <div class="path-panel">
+      <div class="path-panel-hdr direct">&#129521; Path B &mdash; Direct Production</div>
+      <div id="path-split-direct"></div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: VENDOR CARDS (admin only) -->
+  <div class="dash-section-title" id="vendor-section-title" style="display:none">&#127991; Vendor Activity</div>
+  <div class="vendor-grid" id="vendor-grid"></div>
+
+  <!-- SECTION 6: ACTIVITY FEED -->
+  <div class="dash-section-title">&#9889; Recent Activity</div>
+  <div class="feed-list" id="activity-feed">
+    <div class="feed-item"><span class="feed-icon">&#128260;</span><div class="feed-body"><div class="fb-text">Loading activity&hellip;</div></div></div>
+  </div>
+
+  <!-- HISTORY / DELETED ORDERS (admin only) -->
+  <div class="dash-section-title" id="history-section-title" style="display:none">&#128465;&#65039; Deleted Orders — Restore</div>
+  <div id="history-section" style="display:none">
+    <div class="history-toolbar">
+      <span style="font-size:.75rem;color:var(--text-muted)">Deleted orders are kept for 30 days. Click Restore to bring one back.</span>
+      <button class="btn btn-secondary btn-sm" onclick="App.refreshHistory()" style="margin-left:auto">&#8635; Refresh</button>
+    </div>
+    <div class="history-list" id="history-list">
+      <div class="history-empty">No deleted orders found.</div>
+    </div>
+  </div>
+
+</div>
+<!-- /DASHBOARD -->
 
 <div id="board-wrap"><div id="board"></div></div>
 
@@ -904,7 +1162,7 @@ const App=(()=>{
     const data=raw?JSON.parse(raw):{};
     if(!data.stages||!data.stages.length)seedDefaultsDemo(data);
     else applyStoreData(data);
-    applyRoleUI();renderAll();hideLoading();
+    applyRoleUI();renderAll();hideLoading();switchView('dashboard');
   }
   function applyStoreData(data){
     store.stages    =data.stages    ||DEFAULTS.stages.slice();
@@ -1034,7 +1292,7 @@ const App=(()=>{
   }
 
   /* ── Render engine ── */
-  function renderAll(){renderBoard();populateFilterSelects();updateColorPickers();applyFilters();updateStats();}
+  function renderAll(){renderBoard();populateFilterSelects();updateColorPickers();applyFilters();updateStats();if(_currentView==='dashboard')renderDashboard();}
 
   function renderBoard(){
     const board=document.getElementById('board');
@@ -1644,11 +1902,37 @@ const App=(()=>{
   }
   function deleteOrder(){
     if(!requireAdmin('delete orders'))return;
-    if(!editingOrderId||!confirm('Delete this order? Cannot be undone.'))return;
-    dbRemove('/orders/'+editingOrderId).then(()=>{
-      if(demoMode){delete store.orders[editingOrderId];renderAll();}
-      toast('Order deleted','info');closeModal('order-overlay');
+    if(!editingOrderId||!confirm('Delete this order?\n\nIt will be saved in History and can be restored from the Dashboard anytime.'))return;
+    const orderId = editingOrderId;
+    const order   = (store.orders||{})[orderId];
+    if (!order) { closeModal('order-overlay'); return; }
+
+    /* Archive to /deletedOrders before deleting — enables restore */
+    const archived = Object.assign({}, order, {
+      deletedAt: new Date().toISOString(),
+      deletedBy: currentUser?.email || 'unknown'
     });
+
+    const doDelete = () => {
+      if (demoMode) {
+        if (!store.deletedOrders) store.deletedOrders = {};
+        store.deletedOrders[orderId] = archived;
+        delete store.orders[orderId];
+        saveDemo(); renderAll(); renderDashboard();
+        toast('Order deleted — restore it anytime from Dashboard → History','info');
+        closeModal('order-overlay');
+        return;
+      }
+      const updates = {};
+      updates['/deletedOrders/' + orderId] = archived;
+      updates['/orders/' + orderId]        = null;
+      db.ref('/').update(updates).then(() => {
+        logActivity(orderId, 'deleted the order (restorable from Dashboard)');
+        toast('Order deleted — restore it anytime from Dashboard → History','info');
+        closeModal('order-overlay');
+      });
+    };
+    doDelete();
   }
 
   /* ── Drag & Drop ── */
@@ -2099,6 +2383,392 @@ const App=(()=>{
     hideLoading();showEl('fb-config-screen');
   }
 
+
+  /* ══════════════════════════════════════════════════════════
+     VIEW SWITCHER  —  Dashboard ↔ Board
+     ══════════════════════════════════════════════════════════ */
+  let _currentView = 'dashboard';  /* default view on load */
+
+  function switchView(view) {
+    _currentView = view;
+    const isDash = view === 'dashboard';
+
+    /* Toggle visibility */
+    document.getElementById('dashboard-wrap').classList.toggle('active', isDash);
+    document.getElementById('board-wrap').classList.toggle('active', !isDash);
+
+    /* Toggle tab active state */
+    document.getElementById('tab-dashboard').classList.toggle('active', isDash);
+    document.getElementById('tab-board').classList.toggle('active', !isDash);
+
+    /* Filter bar and legend only relevant on board view */
+    document.getElementById('filterbar').style.display = isDash ? 'none' : '';
+    const wl = document.getElementById('workflow-legend');
+    if (wl) wl.style.display = isDash ? 'none' : '';
+
+    /* Stats bar always visible */
+    const sb = document.getElementById('stats-bar');
+    if (sb) {
+      sb.style.marginTop = isDash
+        ? 'calc(var(--topbar-h) + 10px)'
+        : 'calc(var(--header-total) + 10px)';
+    }
+
+    if (isDash) {
+      renderDashboard();
+    } else {
+      renderCards();
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     DASHBOARD RENDER  —  top-level orchestrator
+     Called on: tab switch, every Firebase data update
+     ══════════════════════════════════════════════════════════ */
+  function renderDashboard() {
+    if (_currentView !== 'dashboard') return;
+    renderCommandCenter();
+    renderDueTimeline();
+    renderPathSplit();
+    renderVendorCards();
+    renderActivityFeed();
+    renderHistorySection();
+  }
+
+  /* ── SECTION 1: Command Center ── */
+  function renderCommandCenter() {
+    const orders = Object.values(store.orders || {});
+    const now    = new Date();
+    const limit  = store.stuckDays != null ? store.stuckDays : 30;
+
+    let total=0, hold=0, overdue=0, stuck=0, approval=0, done=0;
+
+    orders.forEach(o => {
+      if (o.productionStage === 'Completed') { done++; return; }
+      total++;
+      const status = getOrderStatus(o);
+      if (status === 'on-hold')  hold++;
+      if (status === 'delayed')  overdue++;
+      /* Stuck: past due OR same stage > limit days */
+      const since  = new Date(o.stageEnteredAt || o.updatedAt || o.createdAt || now);
+      const days   = Math.floor((now - since) / 86400000);
+      if ((o.expectedCompletion && new Date(o.expectedCompletion) < now) || days >= limit) stuck++;
+      if (o.productionStage === 'Awaiting Approval') approval++;
+    });
+
+    const set = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+    set('dc-total',    total);
+    set('dc-hold',     hold);
+    set('dc-overdue',  overdue);
+    set('dc-stuck',    stuck);
+    set('dc-approval', approval);
+    set('dc-done',     done);
+  }
+
+  /* ── SECTION 2: Due Date Timeline ── */
+  function renderDueTimeline() {
+    const orders = Object.values(store.orders || {}).filter(o => o.productionStage !== 'Completed');
+    const now    = new Date(); now.setHours(0,0,0,0);
+    const eod    = d => { const x=new Date(d); x.setHours(23,59,59,999); return x; };
+
+    const buckets = { overdue:[], today:[], week:[], later:[] };
+
+    orders.forEach(o => {
+      if (!o.expectedCompletion) return;
+      const due = eod(o.expectedCompletion);
+      const dueDay = new Date(o.expectedCompletion); dueDay.setHours(0,0,0,0);
+      if (due < new Date())       buckets.overdue.push(o);
+      else if (+dueDay === +now)  buckets.today.push(o);
+      else if (dueDay <= new Date(now.getTime() + 7*86400000)) buckets.week.push(o);
+      else                        buckets.later.push(o);
+    });
+
+    const renderBucket = (id, countId, items, colorClass) => {
+      const el = document.getElementById(id);
+      const ce = document.getElementById(countId);
+      if (!el) return;
+      if (ce) ce.textContent = items.length;
+      if (!items.length) { el.innerHTML='<div class="due-empty">None ✓</div>'; return; }
+      el.innerHTML = '';
+      items.sort((a,b) => new Date(a.expectedCompletion)-new Date(b.expectedCompletion));
+      items.forEach(o => {
+        const d = document.createElement('div');
+        d.className = 'due-item';
+        d.onclick   = () => { openEditOrder(o.id); };
+        const exp   = new Date(o.expectedCompletion).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+        d.innerHTML = `<div class="di-num">${esc(o.orderNumber||'')}</div>
+          <div class="di-cust">${esc(o.customerName||'')}</div>
+          <div class="di-stage">${esc(o.productionStage||'')} <span style="float:right;color:inherit">${exp}</span></div>`;
+        el.appendChild(d);
+      });
+    };
+
+    renderBucket('due-overdue','due-count-overdue', buckets.overdue,'overdue');
+    renderBucket('due-today',  'due-count-today',   buckets.today,  'today');
+    renderBucket('due-week',   'due-count-week',    buckets.week,   'week');
+    renderBucket('due-later',  'due-count-later',   buckets.later,  'later');
+  }
+
+  /* ── SECTION 3: Path Split View ── */
+  function renderPathSplit() {
+    const orders = Object.values(store.orders || {});
+    const sCount = {}, dCount = {};
+
+    WORKFLOW.sampleSteps.forEach(s => sCount[s] = 0);
+    WORKFLOW.directSteps.forEach(s => dCount[s]  = 0);
+
+    orders.forEach(o => {
+      if (WORKFLOW.sampleSteps.includes(o.productionStage)) sCount[o.productionStage]++;
+      if (WORKFLOW.directSteps.includes(o.productionStage)) dCount[o.productionStage]++;
+    });
+
+    const render = (elId, steps, counts) => {
+      const el = document.getElementById(elId); if (!el) return;
+      el.innerHTML = '';
+      steps.forEach(step => {
+        const n   = counts[step] || 0;
+        const row = document.createElement('div');
+        row.className = 'path-stage-row';
+        row.onclick   = () => { filterByStage(step); switchView('board'); };
+        const hot = n > 0 && (step==='Awaiting Approval'||step==='On Hold');
+        row.innerHTML = `<span class="ps-name">${esc(step)}</span>
+          <span class="ps-count ${n===0?'zero':hot?'hot':'has'}">${n}</span>`;
+        el.appendChild(row);
+      });
+    };
+
+    render('path-split-sample', WORKFLOW.sampleSteps, sCount);
+    render('path-split-direct', WORKFLOW.directSteps, dCount);
+  }
+
+  /* ── SECTION 4: Vendor Cards (admin only) ── */
+  function renderVendorCards() {
+    const isAdmin = currentRole === 'admin' || demoMode;
+    const vt  = document.getElementById('vendor-section-title');
+    const vg  = document.getElementById('vendor-grid');
+    if (!vt || !vg) return;
+
+    if (!isAdmin) { vt.style.display='none'; vg.innerHTML=''; return; }
+    vt.style.display = '';
+
+    const orders  = Object.values(store.orders || {});
+    const vendors = {};  /* uid → {email, orders[]} */
+
+    orders.forEach(o => {
+      if (!o.vendorUid) return;
+      if (!vendors[o.vendorUid]) vendors[o.vendorUid] = { email: o.vendorEmail||o.vendorUid, orders:[] };
+      vendors[o.vendorUid].orders.push(o);
+    });
+
+    if (!Object.keys(vendors).length) {
+      vg.innerHTML='<div style="font-size:.78rem;color:var(--text-muted)">No vendor orders yet.</div>';
+      return;
+    }
+
+    vg.innerHTML = '';
+    Object.entries(vendors).forEach(([uid, v]) => {
+      const total   = v.orders.length;
+      const overdue = v.orders.filter(o => getOrderStatus(o)==='delayed').length;
+      const onhold  = v.orders.filter(o => getOrderStatus(o)==='on-hold').length;
+      const name    = v.email.split('@')[0];
+      const initials= name.slice(0,2).toUpperCase();
+      const latest  = v.orders.reduce((a,b)=> new Date(a.updatedAt||0) > new Date(b.updatedAt||0)?a:b, v.orders[0]);
+      const lastUpd = latest ? fmtRelTime(latest.updatedAt) : '—';
+
+      const card = document.createElement('div');
+      card.className = 'vendor-card';
+      card.innerHTML = `
+        <div class="vc-name">
+          <div class="vc-avatar">${esc(initials)}</div>
+          <span>${esc(name)}</span>
+        </div>
+        <div class="vc-stats">
+          <div class="vc-stat">
+            <span class="vs-num" style="color:var(--accent)">${total}</span>
+            <span class="vs-lbl">Active</span>
+          </div>
+          <div class="vc-stat">
+            <span class="vs-num" style="color:var(--red)">${overdue}</span>
+            <span class="vs-lbl">Overdue</span>
+          </div>
+          <div class="vc-stat">
+            <span class="vs-num" style="color:var(--yellow)">${onhold}</span>
+            <span class="vs-lbl">On Hold</span>
+          </div>
+        </div>
+        <div class="vc-last">&#128337; Last update: ${esc(lastUpd)}</div>`;
+      vg.appendChild(card);
+    });
+  }
+
+  /* ── SECTION 6: Activity Feed ── */
+  function renderActivityFeed() {
+    const el = document.getElementById('activity-feed');
+    if (!el) return;
+    el.innerHTML = '<div class="feed-item"><span class="feed-icon">&#128260;</span><div class="feed-body"><div class="fb-text">Loading&hellip;</div></div></div>';
+
+    if (demoMode) {
+      /* Build from in-memory store.activity */
+      const all = [];
+      Object.entries(store.activity || {}).forEach(([orderId, entries]) => {
+        const order = (store.orders || {})[orderId];
+        Object.values(entries).forEach(e => all.push({ ...e, orderId, orderNum: order?.orderNumber||orderId }));
+      });
+      _renderFeedItems(el, all);
+      return;
+    }
+
+    /* For Firebase: read last 20 activity entries across all orders */
+    db.ref('/activity').once('value', snap => {
+      const all = [];
+      const data = snap.val() || {};
+      Object.entries(data).forEach(([orderId, entries]) => {
+        const order = (store.orders || {})[orderId];
+        Object.values(entries).forEach(e => all.push({ ...e, orderId, orderNum: order?.orderNumber || orderId }));
+      });
+      _renderFeedItems(el, all);
+    }, () => {
+      el.innerHTML = '<div class="feed-item"><div class="feed-body"><div class="fb-text" style="color:var(--text-muted)">Activity not available.</div></div></div>';
+    });
+  }
+
+  function _renderFeedItems(el, all) {
+    if (!all.length) {
+      el.innerHTML = '<div class="feed-item"><div class="feed-body"><div class="fb-text" style="color:var(--text-muted)">No activity yet. Create your first order!</div></div></div>';
+      return;
+    }
+    all.sort((a,b) => b.at.localeCompare(a.at));
+    el.innerHTML = '';
+    all.slice(0, 20).forEach(e => {
+      const icon = e.action.startsWith('moved')?'➡️': e.action.startsWith('created')?'✨': e.action.startsWith('image')?'📷':'✏️';
+      const item = document.createElement('div');
+      item.className = 'feed-item';
+      item.innerHTML = `<span class="feed-icon">${icon}</span>
+        <div class="feed-body">
+          <div class="fb-text">
+            <b>${esc(e.by||'?')}</b> ${esc(e.action||'')}
+            ${e.orderNum ? '<span class="feed-order-num"> · '+esc(e.orderNum)+'</span>' : ''}
+          </div>
+          <div class="fb-time">${fmtRelTime(e.at)}</div>
+        </div>`;
+      el.appendChild(item);
+    });
+  }
+
+  /* ── HISTORY: Deleted Orders ── */
+  function renderHistorySection() {
+    const isAdmin = currentRole === 'admin' || demoMode;
+    const hs  = document.getElementById('history-section');
+    const hst = document.getElementById('history-section-title');
+    if (!hs || !hst) return;
+    if (!isAdmin) { hs.style.display='none'; hst.style.display='none'; return; }
+    hs.style.display  = '';
+    hst.style.display = '';
+    refreshHistory();
+  }
+
+  function refreshHistory() {
+    const el = document.getElementById('history-list');
+    if (!el) return;
+    el.innerHTML = '<div class="history-empty">Loading&hellip;</div>';
+
+    if (demoMode) {
+      const deleted = Object.values(store.deletedOrders || {});
+      _renderHistoryItems(el, deleted);
+      return;
+    }
+
+    db.ref('/deletedOrders').once('value', snap => {
+      const deleted = Object.values(snap.val() || {});
+      _renderHistoryItems(el, deleted);
+    }, () => {
+      el.innerHTML = '<div class="history-empty">Could not load history.</div>';
+    });
+  }
+
+  function _renderHistoryItems(el, items) {
+    if (!items.length) {
+      el.innerHTML = '<div class="history-empty">&#10003; No deleted orders — nothing to restore.</div>';
+      return;
+    }
+    items.sort((a,b) => (b.deletedAt||'').localeCompare(a.deletedAt||''));
+    el.innerHTML = '';
+    items.slice(0, 50).forEach(o => {
+      const row = document.createElement('div');
+      row.className = 'history-item';
+      row.innerHTML = `
+        <div class="hi-info">
+          <div class="hi-num">${esc(o.orderNumber||'?')}</div>
+          <div class="hi-name">${esc(o.customerName||'Unknown')}</div>
+          <div class="hi-meta">${esc(o.material||'')} · ${esc(o.carpetSize||'')} · ${esc(o.productionStage||'')}</div>
+        </div>
+        <div class="hi-when">Deleted ${fmtRelTime(o.deletedAt)}</div>
+        <button class="restore-btn" onclick="App.restoreOrder('${esc(o.id||'')}')">&#8635; Restore</button>`;
+      el.appendChild(row);
+    });
+  }
+
+  /* Restore a deleted order back to /orders and remove from /deletedOrders */
+  function restoreOrder(id) {
+    if (!requireAdmin('restore orders')) return;
+    if (!confirm('Restore this order? It will reappear on the board in Pending.')) return;
+
+    const doRestore = (order) => {
+      if (!order) { toast('Order data not found','error'); return; }
+      const restored = Object.assign({}, order, {
+        productionStage: 'Pending',
+        updatedAt: new Date().toISOString(),
+        deletedAt: null,
+        restoredAt: new Date().toISOString()
+      });
+      delete restored.deletedAt;
+
+      if (demoMode) {
+        if (!store.orders) store.orders = {};
+        store.orders[id] = restored;
+        if (store.deletedOrders) delete store.deletedOrders[id];
+        saveDemo(); renderAll(); renderDashboard();
+        toast('Order restored ✓','success');
+        return;
+      }
+
+      /* Write back to /orders, remove from /deletedOrders */
+      const updates = {};
+      updates['/orders/'+id]        = restored;
+      updates['/deletedOrders/'+id] = null;
+      db.ref('/').update(updates).then(() => {
+        logActivity(id, 'restored the order from deleted history');
+        toast('Order restored ✓','success');
+        refreshHistory();
+      });
+    };
+
+    if (demoMode) {
+      doRestore((store.deletedOrders||{})[id]);
+    } else {
+      db.ref('/deletedOrders/'+id).once('value', snap => doRestore(snap.val()));
+    }
+  }
+
+  /* ── Filter helpers used by dashboard ── */
+  function filterByStage(stage) {
+    document.getElementById('f-stage').value = stage;
+  }
+
+  /* ── Relative time formatter ── */
+  function fmtRelTime(iso) {
+    if (!iso) return '—';
+    const diff = Date.now() - new Date(iso).getTime();
+    const min  = Math.floor(diff / 60000);
+    if (min < 1)   return 'just now';
+    if (min < 60)  return min + 'm ago';
+    const hr = Math.floor(min / 60);
+    if (hr < 24)   return hr + 'h ago';
+    const dy = Math.floor(hr / 24);
+    if (dy < 7)    return dy + 'd ago';
+    return new Date(iso).toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+  }
+
   return{
     init,connectFirebase,demoMode:demoMode_,
     onUserReady,showLoginScreen,ensureUserRole,recordUserEmail,
@@ -2116,6 +2786,7 @@ const App=(()=>{
     showColMenu,renameColPrompt,changeColPath,deleteColConfirm,
     _selectPath,_previewImg,_clearImg,
     toast,requireOrderWrite,statFilter,
+    switchView,restoreOrder,filterByStage,refreshHistory,
   };
 })();
 
