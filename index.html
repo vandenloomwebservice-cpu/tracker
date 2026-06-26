@@ -592,6 +592,23 @@ select.form-control option{background:var(--surface2)}
 }
 
 
+
+/* ── New/Repeat toggle ── */
+.toggle-group{display:flex;gap:0;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border)}
+.toggle-opt{flex:1;padding:8px 10px;text-align:center;font-size:.8rem;font-weight:600;cursor:pointer;background:var(--surface2);color:var(--text-muted);border:none;transition:all .18s}
+.toggle-opt.active{background:var(--accent);color:#0f1117}
+.toggle-opt:first-child{border-right:1px solid var(--border)}
+
+/* ── On Hold reason popup ── */
+#hold-reason-overlay .modal{max-width:400px}
+.hold-reason-box{padding:8px 0 4px}
+.hold-reason-box p{font-size:.84rem;color:var(--text-muted);margin-bottom:12px;line-height:1.5}
+.hold-reason-box textarea{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:var(--radius-sm);font-size:.84rem;outline:none;resize:vertical;min-height:90px;font-family:var(--font)}
+.hold-reason-box textarea:focus{border-color:var(--yellow)}
+.hold-quick-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.hold-quick-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);padding:4px 10px;border-radius:20px;font-size:.72rem;cursor:pointer;transition:all .15s}
+.hold-quick-btn:hover{border-color:var(--yellow);color:var(--yellow)}
+
 /* TOAST */
 #toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
 
@@ -988,6 +1005,35 @@ select.form-control option{background:var(--surface2)}
   <button class="col-menu-item" onclick="App.changeColPath()">&#128260; Change Path</button>
   <button class="col-menu-item" onclick="App.deleteColConfirm()">&#128465;&#65039; Delete Stage</button>
 </div>
+
+<!-- ON HOLD REASON MODAL -->
+<div class="overlay" id="hold-reason-overlay" onclick="App.overlayClick(event,'hold-reason-overlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">&#x23F8;&#xFE0F; Moving to On Hold</div>
+      <button class="modal-close" onclick="App.cancelHold()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="hold-reason-box">
+        <p>Why is this order going on hold? (required)</p>
+        <div class="hold-quick-btns">
+          <button class="hold-quick-btn" onclick="App.setHoldReason('Waiting for material')">Waiting for material</button>
+          <button class="hold-quick-btn" onclick="App.setHoldReason('Customer approval pending')">Customer approval</button>
+          <button class="hold-quick-btn" onclick="App.setHoldReason('Design change requested')">Design change</button>
+          <button class="hold-quick-btn" onclick="App.setHoldReason('Payment pending')">Payment pending</button>
+          <button class="hold-quick-btn" onclick="App.setHoldReason('Customer request')">Customer request</button>
+        </div>
+        <textarea id="hold-reason-input" placeholder="Type reason here or pick one above&hellip;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" onclick="App.cancelHold()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="App.confirmHoldWithReason()">Put On Hold</button>
+    </div>
+  </div>
+</div>
+
+
 <!-- CONFIRM DIALOG: reusable yes/no popup (used for card moves) -->
 <div class="overlay" id="confirm-overlay" onclick="App.overlayClick(event,'confirm-overlay')">
   <div class="modal" style="max-width:380px">
@@ -1063,18 +1109,18 @@ const DEFAULTS = {
   categories: ['LIVING ROOM','BEDROOM','DINING ROOM','OFFICE','KIDS ROOM','HALLWAY'],
   fields: [
     {key:'orderNumber',         label:'Order #',              core:true,  visible:true,  type:'text'},
-    {key:'customerName',        label:'Customer Name',        core:true,  visible:true,  type:'text'},
-    {key:'carpetSize',          label:'Carpet Size',          core:false, visible:true,  type:'text'},
-    {key:'category',            label:'Category',             core:false, visible:true,  type:'select-category'},
-    {key:'material',            label:'Material',             core:true,  visible:true,  type:'select-material'},
-    {key:'newOrRepeat',         label:'New / Repeat',         core:false, visible:true,  type:'select', options:['New','Repeat']},
+    {key:'customerName',        label:'Customer Name',        core:false, visible:true,  type:'text', adminOnly:true},
+    {key:'material',            label:'Material',             core:true,  visible:true,  type:'text'},
+    {key:'construction',        label:'Construction',         core:false, visible:true,  type:'text'},
+    {key:'pileHeight',          label:'Pile Height',          core:false, visible:true,  type:'text'},
+    {key:'carpetSize',          label:'Size',                 core:false, visible:true,  type:'text'},
+    {key:'newOrRepeat',         label:'New / Repeat',         core:false, visible:true,  type:'toggle', options:['New Custom Order','Repeat Order']},
+    {key:'designNumber',        label:'Design Number',        core:false, visible:true,  type:'text'},
     {key:'productionStage',     label:'Production Stage',     core:true,  visible:true,  type:'select-stage'},
-    {key:'materialStatus',      label:'Material Status',      core:false, visible:true,  type:'select', options:['Available','Low','Out of Stock']},
     {key:'expectedCompletion',  label:'Expected Completion',  core:true,  visible:true,  type:'date'},
     {key:'sampleCompletionDate',label:'Sample Completion Date',core:false,visible:false, type:'date'},
     {key:'trackingNumber',      label:'Tracking Number',      core:false, visible:true,  type:'text'},
     {key:'holdReason',          label:'Hold Reason',          core:false, visible:false, type:'text'},
-    {key:'holdExpectedDate',    label:'Hold Expected Date',   core:false, visible:false, type:'date'},
     {key:'notes',               label:'Notes',                core:false, visible:true,  type:'textarea'},
   ],
   materials: [
@@ -1222,13 +1268,17 @@ const App=(()=>{
     const vf=document.getElementById('f-vendor');
     if(vf)vf.classList.toggle('hidden',!isAdmin);
 
-    /* New Order button: visible to everyone (admin, vendor, staff can all create orders) */
+    /* New Order button: admin, vendor, staff can all create orders */
     const noBtn=document.querySelector('.topbar-btn.accent');
     if(noBtn)noBtn.classList.remove('hidden');
 
-    /* Staff notice — update text to reflect they CAN create orders but not access settings */
+    /* Notice bar: show relevant message per role */
     const sn=document.getElementById('staff-notice');
-    if(sn){sn.textContent='📋 Can create & edit orders — no settings access';}
+    if(sn){
+      if(isVendor) sn.textContent='🏷 Showing your orders only — create & edit freely';
+      else if(isStaff) sn.textContent='📋 Can create & edit orders — no settings access';
+      else sn.textContent=''; /* admin sees no notice */
+    }
 
     /* Body role class drives CSS (card cursor, etc.) */
     document.body.classList.toggle('role-admin',isAdmin);
@@ -1558,27 +1608,7 @@ const App=(()=>{
       ?new Date(order.expectedCompletion).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'})
       :'—';
 
-    /* Image logic */
-    const showSampleImg =path==='sample'&&['Ready to Ship (Sample)','Awaiting Approval','Sample Approved'].includes(order.productionStage);
-    const showProductImg=path==='direct'&&['Inspection & Packing','Shipped','Completed'].includes(order.productionStage);
-    const imgUrl=path==='sample'?(order.sampleImageUrl||''):(order.productImageUrl||'');
-    let imageHtml='';
-    if(showSampleImg||showProductImg){
-      if(imgUrl){
-        imageHtml=`<div class="card-image-area">
-          <img class="card-image-thumb" src="${esc(imgUrl)}" alt="image"
-            onerror="this.style.display='none'" onclick="App.openEditOrder('${esc(order.id)}')"/>
-        </div>`;
-      }else{
-        const phLabel=showSampleImg?'📷 Add sample image':'📸 Add product photo';
-        imageHtml=`<div class="card-image-area">
-          <div class="card-image-placeholder ${path}" onclick="App.openEditOrder('${esc(order.id)}')">
-            <span class="ph-icon">${showSampleImg?'🪡':'📦'}</span>
-            <span>${phLabel}</span>
-          </div>
-        </div>`;
-      }
-    }
+    /* Image logic moved below */
 
     /* Vendor tag — admin sees who owns each card */
     const isAdmin=currentRole==='admin'||demoMode;
@@ -1589,29 +1619,38 @@ const App=(()=>{
       ?`<div class="card-vendor-tag">🏷 ${esc(vendorName)}</div>`
       :'';
 
-    /* Stuck detection — apply blinking class + flag */
+    /* Stuck detection */
     const stuckInfo=getStuckInfo(order);
     if(stuckInfo.stuck)card.classList.add('stuck');
     const stuckHtml=stuckInfo.stuck
-      ?`<div class="stuck-flag">🔴 Stuck — ${esc(stuckInfo.reason)}</div>`
-      :'';
+      ?`<div class="stuck-flag">🔴 Stuck — ${esc(stuckInfo.reason)}</div>`:'';
+
+    /* Image placeholder */
+    const showSampleImg=path==='sample'&&['Ready to Ship (Sample)','Awaiting Approval','Sample Approved'].includes(order.productionStage);
+    const showProductImg=path==='direct'&&['Inspection & Packing','Shipped','Completed'].includes(order.productionStage);
+    const imgUrl=path==='sample'?(order.sampleImageUrl||''):(order.productImageUrl||'');
+    let imageHtml='';
+    if(showSampleImg||showProductImg){
+      if(imgUrl){imageHtml=`<div class="card-image-area"><img class="card-image-thumb" src="${esc(imgUrl)}" alt="image" onerror="this.style.display='none'" onclick="App.openEditOrder('${esc(order.id)}')"/></div>`;}
+      else{const phLabel=showSampleImg?'📷 Add sample image':'📸 Add product photo';imageHtml=`<div class="card-image-area"><div class="card-image-placeholder ${path}" onclick="App.openEditOrder('${esc(order.id)}')"><span class="ph-icon">${showSampleImg?'🪡':'📦'}</span><span>${phLabel}</span></div></div>`;}
+    }
 
     card.style.setProperty('--card-status-color',statusColor);
     card.innerHTML=`
       <div class="card-path-strip ${path}">${esc(pathLabel)}</div>
       <div class="card-top">
-        <div>
-          <div class="card-order-num">${esc(order.orderNumber||'')}</div>
-          <div class="card-customer">${esc(order.customerName||'Unnamed')}</div>
+        <div style="flex:1;min-width:0">
+          <div class="card-order-num" style="font-size:.95rem;font-weight:900;color:var(--accent);letter-spacing:.06em">${esc(order.orderNumber||'No Number')}</div>
+          ${isAdmin&&order.customerName?`<div class="card-customer" style="font-size:.72rem;color:var(--text-muted);margin-top:2px">${esc(order.customerName)}</div>`:''}
         </div>
         <div class="card-status-badge" style="color:${statusColor};border:1px solid ${statusColor}30;background:${statusColor}18">${esc(sLabels[status]||'')}</div>
       </div>
-      ${imageHtml}
       <div class="card-meta">
-        ${order.carpetSize ?`<span class="card-chip">📐 ${esc(order.carpetSize)}</span>`:''}
-        ${order.material   ?`<span class="card-chip">🧶 ${esc(order.material)}</span>`:''}
-        ${order.category   ?`<span class="card-chip">${esc(order.category)}</span>`:''}
-        ${order.newOrRepeat?`<span class="card-chip">${esc(order.newOrRepeat)}</span>`:''}
+        ${order.material     ?`<span class="card-chip">🧶 ${esc(order.material)}</span>`:''}
+        ${order.construction ?`<span class="card-chip">${esc(order.construction)}</span>`:''}
+        ${order.carpetSize   ?`<span class="card-chip">📐 ${esc(order.carpetSize)}</span>`:''}
+        ${order.newOrRepeat  ?`<span class="card-chip">${esc(order.newOrRepeat.includes('Repeat')?'Repeat':'New')}</span>`:''}
+        ${order.designNumber &&order.newOrRepeat?.includes('Repeat')?`<span class="card-chip">#${esc(order.designNumber)}</span>`:''}
       </div>
       ${vendorHtml}
       ${stuckHtml}
@@ -1643,9 +1682,9 @@ const App=(()=>{
 
   /* ── Status logic ── */
   function getOrderStatus(order){
+    /* On Hold: only if explicitly in On Hold stage */
     if(order.productionStage==='On Hold')return'on-hold';
-    if(order.materialStatus==='Out of Stock')return'on-hold';
-    if(order.holdReason?.trim())return'on-hold';
+    /* Delayed: past expected completion and not finished */
     if(order.expectedCompletion){
       const exp=new Date(order.expectedCompletion);exp.setHours(23,59,59,999);
       if(exp<new Date()&&order.productionStage!=='Completed')return'delayed';
@@ -1723,7 +1762,11 @@ const App=(()=>{
     if(f.material&&order.material!==f.material)return false;
     if(f.custType&&order.newOrRepeat!==f.custType)return false;
     if(f.vendor  &&order.vendorUid!==f.vendor)return false;
-    if(search){const h=((order.orderNumber||'')+(order.customerName||'')).toLowerCase();if(!h.includes(search))return false;}
+    if(search){
+      const isAdmin=currentRole==='admin'||demoMode;
+      const hay=((order.orderNumber||'')+(isAdmin?(order.customerName||''):'')+(order.material||'')+(order.construction||'')).toLowerCase();
+      if(!hay.includes(search))return false;
+    }
     return true;
   }
   function applyFilters(){renderCards();}
@@ -1883,17 +1926,45 @@ const App=(()=>{
   }
 
   function mkField(f,order){
+    const isAdmin=currentRole==='admin'||demoMode;
+    /* Customer Name — admin only, skip for others */
+    if(f.adminOnly && !isAdmin) return document.createDocumentFragment();
     const g=document.createElement('div');g.className='form-group';
     const v=order[f.key]!==undefined?order[f.key]:'';
     let inp;
-    if(f.type==='select-stage')   inp=`<select class="form-control" name="${f.key}">${(store.stages||DEFAULTS.stages).map(s=>`<option value="${esc(s.name)}" ${v===s.name?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`;
-    else if(f.type==='select-category')inp=`<select class="form-control" name="${f.key}"><option value="">&#8212; Select &#8212;</option>${(store.categories||[]).map(c=>`<option value="${esc(c)}" ${v===c?'selected':''}>${esc(c)}</option>`).join('')}</select>`;
-    else if(f.type==='select-material')inp=`<select class="form-control" name="${f.key}"><option value="">&#8212; Select &#8212;</option>${Object.values(store.materials||{}).map(m=>`<option value="${esc(m.name)}" ${v===m.name?'selected':''}>${esc(m.name)} (${m.qty} ${m.unit})</option>`).join('')}</select>`;
-    else if(f.type==='select')    inp=`<select class="form-control" name="${f.key}">${(f.options||[]).map(o=>`<option value="${esc(o)}" ${v===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
-    else if(f.type==='textarea')  inp=`<textarea class="form-control" name="${f.key}" rows="3">${esc(v)}</textarea>`;
-    else if(f.type==='date')      inp=`<input type="date" class="form-control" name="${f.key}" value="${esc(v)}"/>`;
-    else                          inp=`<input type="text" class="form-control" name="${f.key}" value="${esc(v)}" placeholder="${esc(f.label)}"/>`;
-    g.innerHTML=`<label>${esc(f.label)}</label>${inp}`;return g;
+    if(f.type==='select-stage'){
+      inp=`<select class="form-control" name="${f.key}">${(store.stages||DEFAULTS.stages).map(s=>`<option value="${esc(s.name)}" ${v===s.name?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`;
+    }else if(f.type==='toggle'){
+      /* New/Repeat toggle buttons */
+      const opts=f.options||['New Custom Order','Repeat Order'];
+      const activeVal=v||opts[0];
+      inp=`<div class="toggle-group" id="toggle-${f.key}">
+        ${opts.map(o=>`<button type="button" class="toggle-opt ${activeVal===o?'active':''}"
+          onclick="App._toggleField('${f.key}','${esc(o)}')">${esc(o)}</button>`).join('')}
+      </div>
+      <input type="hidden" name="${f.key}" id="hidden-${f.key}" value="${esc(activeVal)}"/>`;
+    }else if(f.type==='textarea'){
+      inp=`<textarea class="form-control" name="${f.key}" rows="3" placeholder="${esc(f.label)}">${esc(v)}</textarea>`;
+    }else if(f.type==='date'){
+      inp=`<input type="date" class="form-control" name="${f.key}" value="${esc(v)}"/>`;
+    }else{
+      /* Default: free text for everything including material, construction, pileHeight, etc. */
+      inp=`<input type="text" class="form-control" name="${f.key}" value="${esc(v)}" placeholder="${esc(f.label)}"/>`;
+    }
+    g.innerHTML=`<label>${esc(f.label)}</label>${inp}`;
+    return g;
+  }
+
+  /* Toggle button click handler */
+  function _toggleField(key, value){
+    /* Update hidden input */
+    const hidden=document.getElementById('hidden-'+key);
+    if(hidden)hidden.value=value;
+    /* Update button active states */
+    const grp=document.getElementById('toggle-'+key);
+    if(grp)grp.querySelectorAll('.toggle-opt').forEach(btn=>{
+      btn.classList.toggle('active', btn.textContent===value);
+    });
   }
 
   /*
@@ -2007,7 +2078,10 @@ const App=(()=>{
       body.appendChild(is);
     }
     const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px 16px';
+    const isAdminView=currentRole==='admin'||demoMode;
     (store.fields||DEFAULTS.fields).filter(f=>f.visible).forEach(f=>{
+      /* Skip admin-only fields for non-admins */
+      if(f.adminOnly&&!isAdminView)return;
       const val=order[f.key];if(!val)return;
       const cell=document.createElement('div');
       cell.innerHTML=`<div style="font-size:.67rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-bottom:3px">${esc(f.label)}</div>
@@ -2033,21 +2107,32 @@ const App=(()=>{
     const pathInput=document.getElementById('form-workflow-path');
     if(pathInput)data.workflowPath=pathInput.value||newOrderPath;
     if(!data.orderNumber?.trim()){toast('Order number is required','error');return;}
-    if(!data.customerName?.trim()){toast('Customer name is required','error');return;}
-    /* Duplicate order-number check (skip the order being edited) */
+    /* Duplicate order-number check */
     const dup=Object.values(store.orders||{}).find(o=>
       o.orderNumber===data.orderNumber.trim()&&o.id!==editingOrderId);
     if(dup){toast('Order number '+data.orderNumber+' already exists','error');return;}
     const now=new Date().toISOString();
-    const mat=data.material?(store.materials||{})[sk(data.material)]:null;
-    if(mat&&mat.qty<=0&&data.productionStage!=='On Hold'){
-      data.productionStage='On Hold';data.materialStatus='Out of Stock';
-      if(!data.holdReason)data.holdReason=data.material+' is out of stock';
-      toast('⚠️ Material unavailable — moved to On Hold','info');
-    }
+    /* No auto-hold — team drags manually to On Hold with a reason */
     if(editingOrderId){
       const ex=(store.orders||{})[editingOrderId]||{};
-      const upd=Object.assign({},ex,data,{updatedAt:now,id:editingOrderId,vendorUid:ex.vendorUid||'',vendorEmail:ex.vendorEmail||''});
+      /*
+        Deep-preserve: start from existing order, overlay form data.
+        Fields NOT in the form (images, stageEnteredAt, vendorUid,
+        createdAt) are NEVER wiped when someone saves an edit.
+      */
+      const upd=Object.assign({},ex,data,{
+        updatedAt:now,
+        id:editingOrderId,
+        vendorUid:ex.vendorUid||'',
+        vendorEmail:ex.vendorEmail||'',
+        createdAt:ex.createdAt||now,
+        /* Reset stuck timer only if stage actually changed */
+        stageEnteredAt: data.productionStage!==ex.productionStage
+          ? now : (ex.stageEnteredAt||now),
+        /* Keep image URLs from existing order if not re-submitted */
+        sampleImageUrl: data.sampleImageUrl||ex.sampleImageUrl||'',
+        productImageUrl:data.productImageUrl||ex.productImageUrl||'',
+      });
       dbSet('/orders/'+editingOrderId,upd).then(()=>{
         if(demoMode){store.orders[editingOrderId]=upd;renderAll();}
         /* Log: note image addition separately from a plain edit */
@@ -2059,7 +2144,11 @@ const App=(()=>{
       const key=dbPushKey();
       const vendorUid  =demoMode?'demo':(currentUser?.uid||'');
       const vendorEmail=demoMode?'demo@vandenloom.com':(currentUser?.email||'');
-      const no=Object.assign({id:key,createdAt:now,updatedAt:now,vendorUid,vendorEmail},data);
+      const no=Object.assign({
+        id:key,createdAt:now,updatedAt:now,
+        stageEnteredAt:now,  /* start stuck-timer from creation */
+        vendorUid,vendorEmail
+      },data);
       dbSet('/orders/'+key,no).then(()=>{
         if(demoMode){if(!store.orders)store.orders={};store.orders[key]=no;renderAll();}
         logActivity(key,'created the order');
@@ -2109,22 +2198,74 @@ const App=(()=>{
   function moveCardToStage(orderId,newStage){
     const order=(store.orders||{})[orderId];
     if(!order||order.productionStage===newStage)return;
-    /* Permission: admin, vendor (own cards), and staff can all move cards */
-    if(currentRole==='vendor'&&!demoMode&&order.vendorUid!==currentUser?.uid){
+
+    const isAdmin=currentRole==='admin'||demoMode;
+    const isVendor=currentRole==='vendor';
+
+    /* Vendor: can only move their own orders */
+    if(isVendor&&!demoMode&&order.vendorUid!==currentUser?.uid){
       toast('You can only move your own orders','error');return;
     }
-    /* (Staff have no restriction on which cards they can move) */
-    if(newStage!=='On Hold'){
+    /* Vendor ONLY: block moving out of On Hold if material still zero.
+       Admin and Staff can always move freely — no material restriction. */
+    if(isVendor&&newStage!=='On Hold'){
       const mat=(store.materials||{})[sk(order.material)];
-      if(mat&&mat.qty<=0){toast('⚠️ Material unavailable — cannot move out of hold','error');return;}
+      if(mat&&mat.qty<=0){
+        toast('Material is out of stock — ask admin to update stock first','error');return;
+      }
     }
     /* Ask for confirmation before committing the move */
     _pendingMove={orderId,newStage,fromStage:order.productionStage};
+
+    /* Special case: moving TO On Hold → show reason popup instead of generic confirm */
+    if(newStage==='On Hold'){
+      document.getElementById('hold-reason-input').value='';
+      openModal('hold-reason-overlay');
+      return;
+    }
+
     document.getElementById('confirm-title').textContent='Move Order?';
     document.getElementById('confirm-message').innerHTML=
       `Move <b>${esc(order.orderNumber||'this order')}</b><br>`+
       `from <b>${esc(order.productionStage)}</b><br>to <b>${esc(newStage)}</b>?`;
     openModal('confirm-overlay');
+  }
+
+  /* User typed a reason and confirmed On Hold */
+  function confirmHoldWithReason(){
+    const reason=document.getElementById('hold-reason-input').value.trim();
+    if(!reason){toast('Please enter a reason for On Hold','error');return;}
+    closeModal('hold-reason-overlay');
+    if(!_pendingMove)return;
+    const{orderId,newStage,fromStage}=_pendingMove;
+    _pendingMove=null;
+    const order=(store.orders||{})[orderId];
+    if(!order)return;
+    const moveNow=new Date().toISOString();
+    const updates={
+      productionStage:newStage,
+      holdReason:reason,
+      updatedAt:moveNow,
+      stageEnteredAt:moveNow,
+    };
+    dbUpdate('/orders/'+orderId,updates).then(()=>{
+      if(demoMode){Object.assign(store.orders[orderId],updates);renderAll();}
+    });
+    logActivity(orderId,`moved to On Hold — reason: ${reason}`);
+    toast('Moved to On Hold','info');
+  }
+
+  /* Quick reason button fill */
+  function setHoldReason(text){
+    const el=document.getElementById('hold-reason-input');
+    if(el)el.value=text;
+  }
+
+  /* Cancel On Hold */
+  function cancelHold(){
+    closeModal('hold-reason-overlay');
+    _pendingMove=null;
+    renderCards(); /* snap card back visually */
   }
 
   /* User confirmed — commit the move */
@@ -2138,8 +2279,13 @@ const App=(()=>{
     /* Path A → Path B transition */
     let wfPath=order.workflowPath||'direct';
     if(order.productionStage==='Sample Approved'&&newStage==='Rug Weaving Started')wfPath='direct';
-    const updates={productionStage:newStage,workflowPath:wfPath,updatedAt:new Date().toISOString(),
-                   stageEnteredAt:new Date().toISOString()};  /* track when it entered this stage (for stuck detection) */
+    const moveNow=new Date().toISOString();
+    const updates={
+      productionStage:newStage,
+      workflowPath:wfPath,
+      updatedAt:moveNow,
+      stageEnteredAt:moveNow,  /* reset stuck timer when card moves to a new stage */
+    };
     dbUpdate('/orders/'+orderId,updates).then(()=>{
       if(demoMode){Object.assign(store.orders[orderId],updates);renderAll();}
     });
@@ -3117,6 +3263,7 @@ const App=(()=>{
     _selectPath,_previewImg,_clearImg,
     toast,requireOrderWrite,statFilter,
     switchView,restoreOrder,filterByStage,refreshHistory,
+    confirmHoldWithReason,setHoldReason,cancelHold,_toggleField,
   };
 })();
 
