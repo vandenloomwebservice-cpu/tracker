@@ -1114,8 +1114,11 @@ const DEFAULTS = {
     {key:'construction',        label:'Construction',         core:false, visible:true,  type:'text'},
     {key:'pileHeight',          label:'Pile Height',          core:false, visible:true,  type:'text'},
     {key:'carpetSize',          label:'Size',                 core:false, visible:true,  type:'text'},
+    {key:'color1',              label:'Color 1',              core:false, visible:true,  type:'text'},
+    {key:'color2',              label:'Color 2',              core:false, visible:true,  type:'text'},
     {key:'newOrRepeat',         label:'New / Repeat',         core:false, visible:true,  type:'toggle', options:['New Custom Order','Repeat Order']},
     {key:'designNumber',        label:'Design Number',        core:false, visible:true,  type:'text'},
+    {key:'mailSent',            label:'Mail Sent',            core:false, visible:true,  type:'toggle', options:['Not Sent','Sent']},
     {key:'productionStage',     label:'Production Stage',     core:true,  visible:true,  type:'select-stage'},
     {key:'expectedCompletion',  label:'Expected Completion',  core:true,  visible:true,  type:'date'},
     {key:'sampleCompletionDate',label:'Sample Completion Date',core:false,visible:false, type:'date'},
@@ -1641,16 +1644,20 @@ const App=(()=>{
       <div class="card-top">
         <div style="flex:1;min-width:0">
           <div class="card-order-num" style="font-size:.95rem;font-weight:900;color:var(--accent);letter-spacing:.06em">${esc(order.orderNumber||'No Number')}</div>
-          ${isAdmin&&order.customerName?`<div class="card-customer" style="font-size:.72rem;color:var(--text-muted);margin-top:2px">${esc(order.customerName)}</div>`:''}
+          <div class="card-status-badge" style="display:inline-flex;margin-top:4px;color:${statusColor};border:1px solid ${statusColor}30;background:${statusColor}18;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border-radius:20px">${esc(sLabels[status]||'')}</div>
+          ${isAdmin&&order.customerName?`<div style="font-size:.68rem;color:var(--text-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(order.customerName)}</div>`:''}
         </div>
-        <div class="card-status-badge" style="color:${statusColor};border:1px solid ${statusColor}30;background:${statusColor}18">${esc(sLabels[status]||'')}</div>
       </div>
       <div class="card-meta">
         ${order.material     ?`<span class="card-chip">🧶 ${esc(order.material)}</span>`:''}
         ${order.construction ?`<span class="card-chip">${esc(order.construction)}</span>`:''}
         ${order.carpetSize   ?`<span class="card-chip">📐 ${esc(order.carpetSize)}</span>`:''}
+        ${order.color1       ?`<span class="card-chip">🎨 ${esc(order.color1)}</span>`:''}
+        ${order.color2       ?`<span class="card-chip">🎨 ${esc(order.color2)}</span>`:''}
         ${order.newOrRepeat  ?`<span class="card-chip">${esc(order.newOrRepeat.includes('Repeat')?'Repeat':'New')}</span>`:''}
         ${order.designNumber &&order.newOrRepeat?.includes('Repeat')?`<span class="card-chip">#${esc(order.designNumber)}</span>`:''}
+        ${order.mailSent==='Sent'?`<span class="card-chip" style="color:var(--green);border-color:rgba(34,197,94,.3)">✉️ Sent</span>`:''}
+        ${order.mailSent==='Not Sent'?`<span class="card-chip" style="color:var(--text-muted)">✉️ Not Sent</span>`:''}
       </div>
       ${vendorHtml}
       ${stuckHtml}
@@ -1927,8 +1934,9 @@ const App=(()=>{
 
   function mkField(f,order){
     const isAdmin=currentRole==='admin'||demoMode;
-    /* Customer Name — admin only, skip for others */
-    if(f.adminOnly && !isAdmin) return document.createDocumentFragment();
+    /* adminOnly fields (Customer Name): completely skip for non-admin users.
+       Returns an empty fragment so nothing renders in the form. */
+    if(f.adminOnly===true && !isAdmin) return document.createDocumentFragment();
     const g=document.createElement('div');g.className='form-group';
     const v=order[f.key]!==undefined?order[f.key]:'';
     let inp;
@@ -2080,8 +2088,8 @@ const App=(()=>{
     const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px 16px';
     const isAdminView=currentRole==='admin'||demoMode;
     (store.fields||DEFAULTS.fields).filter(f=>f.visible).forEach(f=>{
-      /* Skip admin-only fields for non-admins */
-      if(f.adminOnly&&!isAdminView)return;
+      /* STRICT: skip adminOnly fields for non-admins — no customer name leakage */
+      if(f.adminOnly===true&&!isAdminView)return;
       const val=order[f.key];if(!val)return;
       const cell=document.createElement('div');
       cell.innerHTML=`<div style="font-size:.67rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-bottom:3px">${esc(f.label)}</div>
@@ -2469,8 +2477,11 @@ const App=(()=>{
 
   /* Order Fields */
   function renderSettingsFields(){
+    const isAdmin=currentRole==='admin'||demoMode;
     const div=document.getElementById('fields-list');div.innerHTML='';
     (store.fields||DEFAULTS.fields).forEach((f,i)=>{
+      /* Hide adminOnly fields from settings for non-admins */
+      if(f.adminOnly===true&&!isAdmin)return;
       const item=document.createElement('div');item.className='settings-item';item.style.justifyContent='space-between';
       item.innerHTML=`<span style="font-size:.81rem;flex:1">${esc(f.label)} <span style="color:var(--text-muted);font-size:.67rem">(${esc(f.key)})</span></span>
         ${f.core
