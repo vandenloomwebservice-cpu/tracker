@@ -1315,7 +1315,12 @@ const App=(()=>{
      node loads, rather than waiting for one big read. */
   let _loadedNodes={stages:false,categories:false,fields:false,materials:false,colors:false,stuckDays:false,orders:false};
   function _checkAllLoaded(){
-    if(Object.values(_loadedNodes).every(Boolean)){renderAll();hideLoading();}
+    if(Object.values(_loadedNodes).every(Boolean)){
+      renderAll();
+      hideLoading();
+      /* Switch to board AFTER all data is loaded — fixes empty board on first open */
+      switchView('board');
+    }
   }
   function loadFromFirebase(){
     const isAdmin=currentRole==='admin';
@@ -1337,7 +1342,15 @@ const App=(()=>{
     },err=>_dbErr('categories',err));
 
     db.ref('/fields').on('value',snap=>{
-      store.fields=snap.val()||JSON.parse(JSON.stringify(DEFAULTS.fields));
+      /* Load fields from DB but ALWAYS enforce adminOnly on customerName
+         regardless of what the DB says — so old DB records can't leak it */
+      const dbFields = snap.val()||JSON.parse(JSON.stringify(DEFAULTS.fields));
+      /* Hardcoded admin-only keys — these are NEVER shown to non-admins
+         even if the DB field config says otherwise */
+      const ADMIN_ONLY_KEYS = new Set(['customerName']);
+      store.fields = dbFields.map(f=>
+        ADMIN_ONLY_KEYS.has(f.key) ? Object.assign({},f,{adminOnly:true}) : f
+      );
       _loadedNodes.fields=true;_checkAllLoaded();if(store.stages)renderAll();
     },err=>_dbErr('fields',err));
 
@@ -1382,15 +1395,22 @@ const App=(()=>{
     const data=raw?JSON.parse(raw):{};
     if(!data.stages||!data.stages.length)seedDefaultsDemo(data);
     else applyStoreData(data);
-    applyRoleUI();renderAll();hideLoading();switchView('board');
+    applyRoleUI();renderAll();hideLoading();
+    switchView('board'); /* safe here — localStorage is synchronous, data already in store */
   }
   function applyStoreData(data){
     store.stages    =data.stages    ||DEFAULTS.stages.slice();
     store.categories=data.categories||DEFAULTS.categories.slice();
-    store.fields    =data.fields    ||JSON.parse(JSON.stringify(DEFAULTS.fields));
-    store.materials =data.materials ||{};
     store.colors    =data.colors    ||Object.assign({},DEFAULTS.colors);
     store.stuckDays =data.stuckDays !=null?data.stuckDays:DEFAULTS.stuckDays;
+
+    /* Always enforce adminOnly on customerName regardless of stored config */
+    const ADMIN_ONLY_KEYS=new Set(['customerName']);
+    const rawFields=data.fields||JSON.parse(JSON.stringify(DEFAULTS.fields));
+    store.fields=rawFields.map(f=>
+      ADMIN_ONLY_KEYS.has(f.key)?Object.assign({},f,{adminOnly:true}):f
+    );
+    store.materials =data.materials ||{};
 
     /* ORDER SCOPING:
        - admin/staff: see all orders (store.orders = full map)
@@ -1934,9 +1954,11 @@ const App=(()=>{
 
   function mkField(f,order){
     const isAdmin=currentRole==='admin'||demoMode;
-    /* adminOnly fields (Customer Name): completely skip for non-admin users.
-       Returns an empty fragment so nothing renders in the form. */
-    if(f.adminOnly===true && !isAdmin) return document.createDocumentFragment();
+    /* Double-guard: check field flag AND hardcoded key list.
+       customerName is ALWAYS admin-only regardless of DB field config. */
+    const ADMIN_ONLY_KEYS=new Set(['customerName']);
+    if((f.adminOnly===true||ADMIN_ONLY_KEYS.has(f.key))&&!isAdmin)
+      return document.createDocumentFragment();
     const g=document.createElement('div');g.className='form-group';
     const v=order[f.key]!==undefined?order[f.key]:'';
     let inp;
@@ -2087,9 +2109,10 @@ const App=(()=>{
     }
     const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px 16px';
     const isAdminView=currentRole==='admin'||demoMode;
+    const ADMIN_ONLY_KEYS=new Set(['customerName']);
     (store.fields||DEFAULTS.fields).filter(f=>f.visible).forEach(f=>{
-      /* STRICT: skip adminOnly fields for non-admins — no customer name leakage */
-      if(f.adminOnly===true&&!isAdminView)return;
+      /* STRICT double-guard: check both the field flag AND the hardcoded key list */
+      if((f.adminOnly===true||ADMIN_ONLY_KEYS.has(f.key))&&!isAdminView)return;
       const val=order[f.key];if(!val)return;
       const cell=document.createElement('div');
       cell.innerHTML=`<div style="font-size:.67rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-bottom:3px">${esc(f.label)}</div>
@@ -2481,7 +2504,8 @@ const App=(()=>{
     const div=document.getElementById('fields-list');div.innerHTML='';
     (store.fields||DEFAULTS.fields).forEach((f,i)=>{
       /* Hide adminOnly fields from settings for non-admins */
-      if(f.adminOnly===true&&!isAdmin)return;
+      const ADMIN_ONLY_KEYS=new Set(['customerName']);
+      if((f.adminOnly===true||ADMIN_ONLY_KEYS.has(f.key))&&!isAdmin)return;
       const item=document.createElement('div');item.className='settings-item';item.style.justifyContent='space-between';
       item.innerHTML=`<span style="font-size:.81rem;flex:1">${esc(f.label)} <span style="color:var(--text-muted);font-size:.67rem">(${esc(f.key)})</span></span>
         ${f.core
