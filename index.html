@@ -1118,7 +1118,7 @@ const DEFAULTS = {
     {key:'color2',              label:'Color 2',              core:false, visible:true,  type:'text'},
     {key:'newOrRepeat',         label:'New / Repeat',         core:false, visible:true,  type:'toggle', options:['New Custom Order','Repeat Order']},
     {key:'designNumber',        label:'Design Number',        core:false, visible:true,  type:'text'},
-    {key:'mailSent',            label:'Mail Sent',            core:false, visible:true,  type:'toggle', options:['Not Sent','Sent']},
+    {key:'mailSent',            label:'Mail Sent',            core:false, visible:true,  type:'toggle', options:['Sent','Not Sent']},
     {key:'productionStage',     label:'Production Stage',     core:true,  visible:true,  type:'select-stage'},
     {key:'expectedCompletion',  label:'Expected Completion',  core:true,  visible:true,  type:'date'},
     {key:'sampleCompletionDate',label:'Sample Completion Date',core:false,visible:false, type:'date'},
@@ -2824,7 +2824,7 @@ const App=(()=>{
       row.onclick=()=>openEditOrder(o.id);
       row.innerHTML=`
         <div class="attn-info">
-          <div class="attn-name">${esc(o.customerName||'Unnamed')}</div>
+          <div class="attn-name">${esc(o.orderNumber||'?')}${(currentRole==='admin'||demoMode)&&o.customerName?' — '+esc(o.customerName):''}</div>
           <div class="attn-detail">${esc(o.orderNumber||'')} &bull; ${esc(o.productionStage||'')}${exp?' &bull; due '+exp:''}</div>
         </div>
         <span class="attn-badge ${type}">${esc(label)}</span>
@@ -2865,7 +2865,7 @@ const App=(()=>{
       row.onclick=()=>openEditOrder(o.id);
       row.innerHTML=`
         <div class="dlr-info">
-          <div class="dlr-name">${esc(o.customerName||'Unnamed')} &mdash; ${esc(o.orderNumber||'')}</div>
+          <div class="dlr-name">${esc(o.orderNumber||'?')}${(currentRole==='admin'||demoMode)&&o.customerName?' — '+esc(o.customerName):''}</div>
           <div class="dlr-stage">${esc(o.productionStage||'')}${o.material?' &bull; '+esc(o.material):''}</div>
         </div>
         ${tag?`<span class="dlr-tag ${cls}">${tag}</span>`:''}
@@ -3043,7 +3043,7 @@ const App=(()=>{
       row.onclick=()=>openEditOrder(o.id);
       row.innerHTML=`<div class="due-dot"></div>
         <div class="due-row-info">
-          <div class="dr-name">${esc(o.orderNumber||'')} &mdash; ${esc(o.customerName||'')}</div>
+          <div class="dr-name">${esc(o.orderNumber||'')}${(currentRole==='admin'||demoMode)&&o.customerName?' — '+esc(o.customerName):''}</div>
           <div class="dr-detail">${esc(o.productionStage||'')} &bull; ${esc(o.material||'')}</div>
         </div>
         <div class="due-row-date">${label?'<span style="font-size:.65rem;display:block;margin-bottom:2px">'+label+'</span>':''}${exp}</div>`;
@@ -3194,7 +3194,7 @@ const App=(()=>{
         row.className='hist-v2-row';
         row.innerHTML=`<div class="hist-v2-info">
           <div class="hv2-num">${esc(o.orderNumber||'?')}</div>
-          <div class="hv2-name">${esc(o.customerName||'Unknown customer')}</div>
+          <div class="hv2-name">${esc(o.orderNumber||'?')}${(currentRole==='admin'||demoMode)&&o.customerName?' — '+esc(o.customerName):''}</div>
           <div class="hv2-meta">${esc(o.material||'')}${o.carpetSize?' &bull; '+esc(o.carpetSize):''}${o.productionStage?' &bull; '+esc(o.productionStage):''}</div>
         </div>
         <div class="hv2-when">Deleted ${fmtRelTime(o.deletedAt)}</div>
